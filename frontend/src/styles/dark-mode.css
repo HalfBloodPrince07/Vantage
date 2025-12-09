@@ -1,0 +1,180 @@
+/* frontend/styles/dark-mode.css */
+/* Dark mode theme for chat interface */
+
+/* Dark mode variables */
+:root[data-theme="dark"] {
+    --bg-primary: #1a1a2e;
+    --bg-secondary: #16213e;
+    --bg-tertiary: #0f1419;
+    --text-primary: #ffffff;
+    --text-secondary: #b4b4b4;
+    --text-tertiary: #808080;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --shadow: rgba(0, 0, 0, 0.5);
+    --gradient-start: #667eea;
+    --gradient-end: #764ba2;
+}
+
+/* Main app dark mode */
+[data-theme="dark"] .chat-interface {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+/* Sidebar dark mode (already dark by default) */
+[data-theme="dark"] .chat-sidebar {
+    background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    border-right-color: var(--border-color);
+}
+
+/* Main chat area dark mode */
+[data-theme="dark"] .chat-main {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .chat-header {
+    background: var(--bg-primary);
+    border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .messages-container {
+    background: var(--bg-tertiary);
+}
+
+/* Message bubbles dark mode */
+[data-theme="dark"] .message-content {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .assistant-message .message-content {
+    background: var(--bg-secondary);
+    box-shadow: 0 2px 8px var(--shadow);
+}
+
+/* Keep user messages with gradient */
+[data-theme="dark"] .user-message .message-content {
+    background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+    color: white;
+}
+
+/* Results in dark mode */
+[data-theme="dark"] .result-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-left-color: var(--gradient-start);
+}
+
+[data-theme="dark"] .result-filename {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .result-preview {
+    color: var(--text-secondary);
+}
+
+/* Input area dark mode */
+[data-theme="dark"] .input-container {
+    background: var(--bg-primary);
+    border-top-color: var(--border-color);
+}
+
+[data-theme="dark"] .search-input {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .search-input::placeholder {
+    color: var(--text-tertiary);
+}
+
+[data-theme="dark"] .search-input:focus {
+    border-color: var(--gradient-start);
+    background: var(--bg-tertiary);
+}
+
+/* Document selector dark mode */
+[data-theme="dark"] .selector-panel {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .panel-header {
+    border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .panel-header h3 {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .panel-search input {
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .doc-item {
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .doc-name {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .doc-meta {
+    color: var(--text-secondary);
+}
+
+/* Welcome message dark mode */
+[data-theme="dark"] .welcome-message h2 {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .welcome-message p {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .example-queries {
+    background: var(--bg-secondary);
+}
+
+/* Thinking steps dark mode */
+[data-theme="dark"] .thinking-steps {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+}
+
+/* Dark mode toggle button */
+.dark-mode-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.dark-mode-toggle:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.dark-mode-toggle:active {
+    transform: translateY(0);
+}
+
+/* Smooth transitions for theme changes */
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}

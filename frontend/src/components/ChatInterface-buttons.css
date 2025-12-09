@@ -1,0 +1,61 @@
+/* Add to ChatInterface.css - button styles for settings and logout */
+
+.header-info {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.user-badge {
+    padding: 6px 12px;
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.conversation-indicator {
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.settings-btn,
+.logout-btn {
+    padding: 8px 14px;
+    background: rgba(102, 126, 234, 0.1);
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.settings-btn:hover,
+.logout-btn:hover {
+    background: rgba(102, 126, 234, 0.2);
+    transform: translateY(-1px);
+}
+
+.logout-btn {
+    background: rgba(244, 67, 54, 0.1);
+}
+
+.logout-btn:hover {
+    background: rgba(244, 67, 54, 0.2);
+}
+
+/* Dark mode for header buttons */
+[data-theme="dark"] .settings-btn,
+[data-theme="dark"] .logout-btn {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .settings-btn:hover,
+[data-theme="dark"] .logout-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}

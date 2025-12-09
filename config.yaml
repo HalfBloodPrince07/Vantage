@@ -95,7 +95,7 @@ agent:
 # File Watcher Configuration
 watcher:
   debounce_seconds: 3
-  batch_size: 7
+  batch_size: 5
   supported_extensions:
     - ".pdf"
     - ".docx"
@@ -111,9 +111,13 @@ watcher:
 
 # Ingestion Pipeline Settings
 ingestion:
-  chunk_size: 700        # Smaller chunks for better precision
-  chunk_overlap: 200
-  max_workers: 4
+  max_workers: 3
+  
+  # Summary-based retrieval (no chunking)
+  summary:
+    max_length: 7000           # Max tokens for detailed summary
+    include_full_content: true # Store full document content for LLM context
+    max_content_length: 50000  # Max chars of full content to store
   
   # Enhanced prompts
   prompts:
@@ -322,3 +326,5 @@ performance:
   # Request queuing
   max_concurrent_requests: 10
   request_timeout: 120
+
+# uvicorn backend.api:app --host 0.0.0.0 --port 8000

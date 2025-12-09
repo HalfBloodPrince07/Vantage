@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalLens - Chat Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0e1a;
+            color: #fff;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-header h2 {
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .new-chat-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .new-chat-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .conversations {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .conversation-item {
+            padding: 12px;
+            margin-bottom: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .conversation-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .conversation-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        /* Main Chat Area */
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 20px 30px;
+            background: #16213e;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 30px;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .welcome-message h2 {
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            max-width: 85%;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+            margin-left: auto;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        }
+
+        .message-content {
+            flex: 1;
+            background: #1e293b;
+            padding: 12px 16px;
+            border-radius: 12px;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .thinking-steps {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 16px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 20px;
+        }
+
+        .thinking-steps h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .step-item {
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            padding: 4px 0;
+            opacity: 0;
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        .input-container {
+            padding: 20px 30px;
+            background: #16213e;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .input-form {
+            display: flex;
+            gap: 12px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 14px 18px;
+            background: #1e293b;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: white;
+            font-size: 15px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-button {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .search-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .search-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .result-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border-left: 3px solid #667eea;
+        }
+
+        .result-filename {
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .result-preview {
+            font-size: 13px;
+            color: #b4b4b4;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Conversations</h2>
+            <button class="new-chat-btn" onclick="newChat()">➕ New Chat</button>
+        </div>
+        <div class="conversations" id="conversations"></div>
+    </div>
+
+    <div class="chat-main">
+        <div class="chat-header">
+            <h1>LocalLens Search</h1>
+        </div>
+
+        <div class="messages-container" id="messages">
+            <div class="welcome-message">
+                <h2>👋 Welcome to LocalLens</h2>
+                <p>Search your indexed documents with AI-powered semantic search</p>
+            </div>
+        </div>
+
+        <div class="input-container">
+            <form class="input-form" onsubmit="search(event)">
+                <input
+                    type="text"
+                    id="searchInput"
+                    class="search-input"
+                    placeholder="Ask about your documents..."
+                    autocomplete="off"
+                />
+                <button type="submit" class="search-button" id="searchBtn">
+                    🔍 Search
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        const USER_ID = 'user_1';
+        let currentConversationId = null;
+        let conversations = [];
+        let eventSource = null;
+
+        // Load conversations on startup
+        loadConversations();
+
+        async function loadConversations() {
+            try {
+                const response = await fetch(`${API_URL}/conversations?user_id=${USER_ID}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    conversations = data.conversations;
+                    renderConversations();
+                }
+            } catch (error) {
+                console.error('Failed to load conversations:', error);
+            }
+        }
+
+        function renderConversations() {
+            const container = document.getElementById('conversations');
+            container.innerHTML = '';
+
+            const allConvs = [
+                ...conversations.today || [],
+                ...conversations.yesterday || [],
+                ...conversations.this_week || [],
+                ...conversations.older || []
+            ];
+
+            allConvs.forEach(conv => {
+                const div = document.createElement('div');
+                div.className = `conversation-item ${conv.id === currentConversationId ? 'active' : ''}`;
+                div.innerHTML = `
+                    <div style="font-weight: 500">${conv.title}</div>
+                    <div style="font-size: 11px; color: #b4b4b4; margin-top: 4px">
+                        ${conv.message_count} messages
+                    </div>
+                `;
+                div.onclick = () => selectConversation(conv.id);
+                container.appendChild(div);
+            });
+        }
+
+        async function selectConversation(convId) {
+            currentConversationId = convId;
+            renderConversations();
+
+            // Load messages
+            const response = await fetch(`${API_URL}/conversations/${convId}/messages`);
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                const container = document.getElementById('messages');
+                container.innerHTML = '';
+                
+                data.messages.forEach(msg => {
+                    addMessage(msg.role, msg.content, msg.results);
+                });
+            }
+        }
+
+        function newChat() {
+            currentConversationId = null;
+            document.getElementById('messages').innerHTML = `
+                <div class="welcome-message">
+                    <h2>👋 New Conversation</h2>
+                    <p>Ask your first question to get started</p>
+                </div>
+            `;
+            renderConversations();
+        }
+
+        async function search(e) {
+            e.preventDefault();
+            
+            const input = document.getElementById('searchInput');
+            const query = input.value.trim();
+            
+            if (!query) return;
+            
+            input.value = '';
+            const btn = document.getElementById('searchBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Searching...';
+
+            // Add user message
+            addMessage('user', query);
+
+            // Connect to SSE for thinking steps
+            const sessionId = `session_${Date.now()}`;
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.className = 'thinking-steps';
+            thinkingDiv.innerHTML = '<h4>🤖 Thinking...</h4>';
+            document.getElementById('messages').appendChild(thinkingDiv);
+
+            eventSource = new EventSource(`${API_URL}/search/enhanced/stream/${sessionId}`);
+            
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'step') {
+                    const stepDiv = document.createElement('div');
+                    stepDiv.className = 'step-item';
+                    stepDiv.textContent = data.message;
+                    thinkingDiv.appendChild(stepDiv);
+                } else if (data.type === 'complete') {
+                    eventSource.close();
+                }
+            };
+
+            // Perform search
+            try {
+                const response = await fetch(`${API_URL}/search/enhanced`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query,
+                        user_id: USER_ID,
+                        session_id: sessionId,
+                        conversation_id: currentConversationId,
+                        top_k: 5
+                    })
+                });
+
+                const result = await response.json();
+
+                // Update conversation ID
+                if (result.conversation_id) {
+                    currentConversationId = result.conversation_id;
+                    await loadConversations();
+                }
+
+                // Remove thinking steps
+                thinkingDiv.remove();
+
+                // Add assistant response
+                addMessage('assistant', result.response_message || 'Search complete', result.results);
+
+            } catch (error) {
+                console.error('Search error:', error);
+                thinkingDiv.remove();
+                addMessage('assistant', 'Error: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 Search';
+            }
+        }
+
+        function addMessage(role, content, results = null) {
+            const container = document.getElementById('messages');
+            const welcomeMsg = container.querySelector('.welcome-message');
+            if (welcomeMsg) welcomeMsg.remove();
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            
+            const avatar = role === 'user' ? '👤' : '🤖';
+            
+            let resultsHTML = '';
+            if (results && results.length > 0) {
+                resultsHTML = `
+                    <div style="margin-top: 15px">
+                        <strong>📄 Found ${results.length} results:</strong>
+                        ${results.map(r => `
+                            <div class="result-item">
+                                <div class="result-filename">${r.filename}</div>
+                                <div class="result-preview">
+                                    ${r.content_summary || r.text?.substring(0, 150) || ''}...
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${avatar}</div>
+                <div class="message-content">
+                    <div>${content}</div>
+                    ${resultsHTML}
+                </div>
+            `;
+
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Keyboard shortcut: Ctrl+K to focus search
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                document.getElementById('searchInput').focus();
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                e.preventDefault();
+                newChat();
+            }
+        });
+    </script>
+</body>
+</html>

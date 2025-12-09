@@ -1,0 +1,88 @@
+/* Additional CSS for file selection UI */
+
+.method-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.method-btn {
+    flex: 1;
+    padding: 12px;
+    background: rgba(102, 126, 234, 0.1);
+    border: 2px solid rgba(102, 126, 234, 0.2);
+    border-radius: 8px;
+    color: #667eea;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.method-btn:hover {
+    background: rgba(102, 126, 234, 0.2);
+    border-color: rgba(102, 126, 234, 0.4);
+}
+
+.method-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+    color: white;
+}
+
+.file-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.selected-files-box {
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.selected-files-box strong {
+    color: #4CAF50;
+}
+
+.file-preview {
+    margin-top: 10px;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.file-preview-item {
+    font-size: 13px;
+    color: #666;
+    padding: 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Dark mode for new elements */
+[data-theme="dark"] .method-btn {
+    background: rgba(102, 126, 234, 0.15);
+    border-color: rgba(102, 126, 234, 0.25);
+    color: #8895ea;
+}
+
+[data-theme="dark"] .method-btn:hover {
+    background: rgba(102, 126, 234, 0.25);
+}
+
+[data-theme="dark"] .method-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+[data-theme="dark"] .selected-files-box {
+    background: rgba(76, 175, 80, 0.15);
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+[data-theme="dark"] .file-preview-item {
+    color: #b4b4b4;
+}
