@@ -1,0 +1,245 @@
+/* CreatorBadge.css - Minimalist creator attribution styling */
+
+.creator-badge {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    /* Moved to left to avoid overlap with theme toggle */
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px 8px 8px;
+    background: rgba(18, 18, 26, 0.9);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 50px;
+    z-index: 999;
+    cursor: default;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.creator-badge:hover {
+    background: rgba(26, 26, 46, 0.95);
+    border-color: rgba(0, 212, 255, 0.3);
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Agent Message Popup */
+.agent-message {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(139, 92, 246, 0.15));
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 12px;
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+}
+
+.agent-message.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.agent-avatars {
+    display: flex;
+    gap: 2px;
+}
+
+.mini-agent {
+    font-size: 14px;
+    animation: agent-bounce 0.6s ease-out;
+    animation-fill-mode: both;
+}
+
+.mini-agent:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.mini-agent:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.mini-agent:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+@keyframes agent-bounce {
+    0% {
+        transform: scale(0) translateY(10px);
+        opacity: 0;
+    }
+
+    60% {
+        transform: scale(1.2) translateY(-5px);
+    }
+
+    100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+.message-text {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, #00d4ff, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.message-arrow {
+    position: absolute;
+    bottom: -6px;
+    right: 24px;
+    width: 12px;
+    height: 12px;
+    background: inherit;
+    border: inherit;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
+}
+
+/* Profile Photo */
+.creator-photo {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.creator-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.creator-photo.active img {
+    transform: scale(1.1);
+}
+
+.photo-glow {
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00d4ff, #8b5cf6);
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.creator-photo.active .photo-glow {
+    opacity: 1;
+    animation: glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+
+    0%,
+    100% {
+        opacity: 0.5;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Info Section */
+.creator-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 150px;
+    overflow: hidden;
+}
+
+.creator-text {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+}
+
+.creator-text strong {
+    color: #fff;
+    font-weight: 600;
+}
+
+/* Social Links */
+.social-links {
+    display: flex;
+    gap: 8px;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.social-links.visible {
+    max-height: 30px;
+    opacity: 1;
+    margin-top: 4px;
+}
+
+.social-link {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+}
+
+.social-link:hover {
+    transform: translateY(-2px);
+}
+
+.social-link.github:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.social-link.linkedin:hover {
+    color: #0077b5;
+    background: rgba(0, 119, 181, 0.15);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .creator-badge {
+        bottom: 10px;
+        right: 10px;
+        padding: 6px 10px 6px 6px;
+    }
+
+    .creator-photo {
+        width: 28px;
+        height: 28px;
+    }
+
+    .creator-info {
+        max-width: 120px;
+    }
+
+    .creator-text {
+        font-size: 10px;
+    }
+}

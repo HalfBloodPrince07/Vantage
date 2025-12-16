@@ -1,0 +1,866 @@
+/* AgentThinkingCinematic.css - Premium cinematic agent visualization */
+
+.agent-thinking-cinematic-container {
+    /* Fixed position card above the input area */
+    position: fixed;
+    bottom: 90px;
+    /* Above the input area */
+    left: calc(140px + 50%);
+    transform: translateX(-50%);
+    width: calc(100% - 320px);
+    /* Account for sidebar */
+    max-width: 1100px;
+    max-height: 75vh;
+
+    background: linear-gradient(145deg, rgba(15, 15, 25, 0.98), rgba(25, 25, 45, 0.95));
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 20px;
+    padding: 20px 24px;
+
+    overflow: hidden;
+    overflow-y: auto;
+    backdrop-filter: blur(20px);
+    box-shadow:
+        0 -10px 40px rgba(0, 0, 0, 0.5),
+        0 0 80px rgba(99, 102, 241, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+    z-index: 100;
+    animation: card-slide-up 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Custom scrollbar for the card */
+.agent-thinking-cinematic-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.agent-thinking-cinematic-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+.agent-thinking-cinematic-container::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.4);
+    border-radius: 3px;
+}
+
+@keyframes card-slide-up {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* Responsive for smaller screens */
+@media (max-width: 1024px) {
+    .agent-thinking-cinematic-container {
+        width: calc(100% - 40px);
+        left: 50%;
+    }
+}
+
+@media (max-width: 768px) {
+    .agent-thinking-cinematic-container {
+        width: calc(100% - 20px);
+        bottom: 80px;
+        padding: 16px;
+    }
+}
+
+/* Ambient background glow */
+.agent-thinking-cinematic-container::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    animation: ambient-pulse 4s ease-in-out infinite;
+}
+
+@keyframes ambient-pulse {
+
+    0%,
+    100% {
+        opacity: 0.5;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+}
+
+/* ============================================
+   Header Styles
+   ============================================ */
+
+.cinematic-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.header-orb {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.orb-icon {
+    font-size: 28px;
+    position: relative;
+    z-index: 2;
+    animation: orb-float 3s ease-in-out infinite;
+}
+
+@keyframes orb-float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-4px);
+    }
+}
+
+.orb-rings {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(99, 102, 241, 0.3);
+    animation: orb-ring-spin 8s linear infinite;
+}
+
+.orb-rings::before,
+.orb-rings::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.orb-rings::after {
+    inset: -12px;
+    animation: orb-ring-spin-reverse 12s linear infinite;
+}
+
+@keyframes orb-ring-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes orb-ring-spin-reverse {
+    from {
+        transform: rotate(360deg);
+    }
+
+    to {
+        transform: rotate(0deg);
+    }
+}
+
+.header-text h4 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.5px;
+}
+
+.header-text p {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* ============================================
+   SVG Visualization
+   ============================================ */
+
+.visualization-container {
+    position: relative;
+    margin: 12px 0;
+}
+
+.agent-svg {
+    width: 100%;
+    height: 360px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%);
+}
+
+/* Ambient circle background */
+.ambient-circle {
+    animation: ambient-rotate 30s linear infinite;
+    transform-origin: center;
+}
+
+@keyframes ambient-rotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ============================================
+   Agent Avatar Styles
+   ============================================ */
+
+.agent-avatar-cinematic {
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.agent-avatar-cinematic:hover {
+    transform: scale(1.08);
+}
+
+.agent-aura {
+    transition: opacity 0.3s ease;
+}
+
+.agent-avatar-cinematic.active .agent-aura {
+    animation: aura-pulse 2s ease-in-out infinite;
+}
+
+@keyframes aura-pulse {
+
+    0%,
+    100% {
+        r: 45;
+        opacity: 0.3;
+    }
+
+    50% {
+        r: 50;
+        opacity: 0.5;
+    }
+}
+
+/* Neural threads for thinking state */
+.neural-thread {
+    animation: neural-flicker 1.5s ease-in-out infinite;
+}
+
+@keyframes neural-flicker {
+
+    0%,
+    100% {
+        opacity: 0.2;
+        stroke-dashoffset: 0;
+    }
+
+    50% {
+        opacity: 0.5;
+        stroke-dashoffset: 8;
+    }
+}
+
+/* Orbital rings */
+.orbit-ring-1 {
+    animation: orbit-tilt-1 3s linear infinite;
+    transform-origin: center;
+}
+
+.orbit-ring-2 {
+    animation: orbit-tilt-2 4s linear infinite reverse;
+    transform-origin: center;
+}
+
+@keyframes orbit-tilt-1 {
+    0% {
+        transform: rotateX(60deg) rotateZ(0deg);
+    }
+
+    100% {
+        transform: rotateX(60deg) rotateZ(360deg);
+    }
+}
+
+@keyframes orbit-tilt-2 {
+    0% {
+        transform: rotateX(60deg) rotateY(45deg) rotateZ(0deg);
+    }
+
+    100% {
+        transform: rotateX(60deg) rotateY(45deg) rotateZ(360deg);
+    }
+}
+
+/* Avatar core */
+.avatar-core {
+    filter: drop-shadow(0 0 10px currentColor);
+    transition: transform 0.3s ease;
+}
+
+.agent-avatar-cinematic.active .avatar-core {
+    animation: core-breathe 2s ease-in-out infinite;
+}
+
+@keyframes core-breathe {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+/* Agent emoji symbol */
+.agent-symbol {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.agent-avatar-cinematic.active .agent-symbol {
+    animation: symbol-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes symbol-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+/* Agent name label */
+.agent-name {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================
+   Connection Styles
+   ============================================ */
+
+.agent-connection {
+    transition: opacity 0.3s ease;
+}
+
+.connection-base {
+    transition: stroke-width 0.3s ease, opacity 0.3s ease;
+}
+
+.connection-flow {
+    animation: flow-dash 0.8s linear infinite;
+}
+
+@keyframes flow-dash {
+    from {
+        stroke-dashoffset: 24;
+    }
+
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.flow-particle {
+    filter: blur(1px);
+    box-shadow: 0 0 10px currentColor;
+}
+
+/* ============================================
+   Activity Feed - Enhanced with Step Numbers
+   ============================================ */
+
+.activity-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.activity-feed::-webkit-scrollbar {
+    width: 6px;
+}
+
+.activity-feed::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+.activity-feed::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.3);
+    border-radius: 3px;
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    transition: all 0.3s ease;
+    animation: activity-slide-in 0.4s ease-out;
+    position: relative;
+}
+
+@keyframes activity-slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.activity-item.completed {
+    opacity: 0.7;
+}
+
+.activity-item.latest {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.08));
+    border-color: var(--agent-color, rgba(99, 102, 241, 0.3));
+    box-shadow: 0 0 30px rgba(99, 102, 241, 0.08);
+    opacity: 1;
+}
+
+/* Step number */
+.step-number {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.15);
+    border: 2px solid rgba(99, 102, 241, 0.3);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.activity-item.latest .step-number {
+    background: var(--agent-color, #6366f1);
+    border-color: var(--agent-color, #6366f1);
+    color: white;
+    animation: step-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes step-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 var(--agent-color, rgba(99, 102, 241, 0.4));
+    }
+
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 8px transparent;
+    }
+}
+
+.activity-icon {
+    position: relative;
+    font-size: 22px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    border: 2px solid;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.pulse-dot {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 12px;
+    height: 12px;
+    background: var(--agent-color, #6366f1);
+    border-radius: 50%;
+    border: 2px solid rgba(15, 15, 25, 0.95);
+    animation: pulse-dot-anim 1s ease-out infinite;
+}
+
+@keyframes pulse-dot-anim {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.3);
+        opacity: 0.7;
+    }
+}
+
+.activity-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.activity-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.activity-agent {
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.activity-role {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 500;
+}
+
+.activity-action {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.4;
+}
+
+.activity-details {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+    margin-top: 2px;
+}
+
+.activity-status-indicator {
+    flex-shrink: 0;
+}
+
+.status-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.status-badge.active {
+    background: var(--agent-color, rgba(99, 102, 241, 0.2));
+    color: var(--agent-color, #6366f1);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.done {
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+    font-size: 14px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: status-blink 0.8s ease-in-out infinite;
+}
+
+@keyframes status-blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* ============================================
+   Progress Indicator
+   ============================================ */
+
+.cinematic-progress {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.progress-track {
+    flex: 1;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-glow {
+    position: absolute;
+    top: 0;
+    left: -30%;
+    width: 30%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(99, 102, 241, 0.8),
+            rgba(139, 92, 246, 0.8),
+            transparent);
+    border-radius: 2px;
+    animation: progress-sweep 1.5s ease-in-out infinite;
+}
+
+@keyframes progress-sweep {
+    0% {
+        left: -30%;
+    }
+
+    100% {
+        left: 100%;
+    }
+}
+
+.progress-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+}
+
+/* ============================================
+   Tooltip
+   ============================================ */
+
+.agent-tooltip-cinematic {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    background: rgba(20, 20, 35, 0.95);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    animation: tooltip-pop 0.2s ease-out;
+    z-index: 100;
+}
+
+@keyframes tooltip-pop {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(10px) scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(1);
+    }
+}
+
+.tooltip-emoji {
+    font-size: 28px;
+}
+
+.tooltip-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.tooltip-content strong {
+    font-size: 14px;
+    color: #fff;
+}
+
+.tooltip-content span {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* ============================================
+   Knowledge Token Animation
+   ============================================ */
+
+.knowledge-token {
+    animation: token-float 2s ease-in-out infinite;
+}
+
+@keyframes token-float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+.token-glow {
+    filter: blur(4px);
+}
+
+/* ============================================
+   Neural Particle Animation
+   ============================================ */
+
+.neural-particle {
+    filter: blur(1px);
+}
+
+/* ============================================
+   Interaction Type Animations
+   ============================================ */
+
+/* Handshake - brief connection pulse */
+.agent-connection.handoff .connection-flow {
+    stroke-dasharray: 4 8;
+    animation: handoff-flow 0.6s linear infinite;
+}
+
+@keyframes handoff-flow {
+    from {
+        stroke-dashoffset: 12;
+    }
+
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+/* Query - sending pattern */
+.agent-connection.query .flow-particle {
+    animation: query-particle 0.8s ease-out infinite;
+}
+
+@keyframes query-particle {
+    0% {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+}
+
+/* Collaborate - merging glow */
+.agent-connection.collaborate::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 30px;
+    height: 30px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.5), transparent);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: collab-merge 1.5s ease-in-out infinite;
+}
+
+@keyframes collab-merge {
+
+    0%,
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.3;
+    }
+
+    50% {
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 0.7;
+    }
+}
+
+/* Verify - pulsing check */
+.agent-connection.verify .connection-base {
+    animation: verify-pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes verify-pulse {
+
+    0%,
+    100% {
+        stroke-width: 1;
+    }
+
+    50% {
+        stroke-width: 3;
+    }
+}
+
+/* Refine - polishing shimmer */
+.agent-connection.refine .connection-flow {
+    background: linear-gradient(90deg, transparent, white, transparent);
+    animation: refine-shimmer 1s ease-in-out infinite;
+}
+
+@keyframes refine-shimmer {
+    0% {
+        opacity: 0.3;
+    }
+
+    50% {
+        opacity: 0.8;
+    }
+
+    100% {
+        opacity: 0.3;
+    }
+}

@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import ChatInterface from './components/ChatInterface';
 import OnboardingWizard from './components/OnboardingWizard';
 import IndexingProgress from './components/IndexingProgress';
+import CreatorBadge from './components/CreatorBadge';
+import AmbientParticles from './components/AmbientParticles';
 import { useDarkMode, DarkModeToggle } from './hooks/useDarkMode.jsx';
 import './styles/dark-mode.css';
+import './styles/ai-dashboard.css';
 import './components/OnboardingWizard.css';
 import './components/IndexingProgress.css';
 
@@ -71,6 +74,9 @@ function App() {
 
     return (
         <>
+            {/* Subtle ambient particles in background */}
+            <AmbientParticles particleCount={20} />
+
             <ChatInterface
                 userId={userId}
                 onLogout={handleLogout}

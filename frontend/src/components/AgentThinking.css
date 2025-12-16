@@ -1,0 +1,570 @@
+/* AgentThinking.css - Animated AI Agents Communication Display */
+
+.agent-thinking-container {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.08));
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 16px;
+    padding: 20px;
+    margin: 16px 0;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Animated background shimmer */
+.agent-thinking-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.05), transparent);
+    animation: thinking-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes thinking-shimmer {
+    0% {
+        left: -100%;
+    }
+
+    100% {
+        left: 100%;
+    }
+}
+
+/* Header */
+.thinking-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.thinking-icon-container {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.thinking-orb {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.3));
+    animation: orb-pulse 2s ease-in-out infinite;
+}
+
+@keyframes orb-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+}
+
+.thinking-icon {
+    font-size: 24px;
+    position: relative;
+    z-index: 1;
+    animation: icon-bounce 1s ease-in-out infinite;
+}
+
+@keyframes icon-bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
+.thinking-title h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.thinking-title p {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Agent Pipeline */
+.agent-pipeline {
+    position: relative;
+}
+
+.agent-step {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+    animation: step-appear 0.4s ease-out;
+}
+
+@keyframes step-appear {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Connector with animated data flow */
+.step-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 20px;
+    position: relative;
+}
+
+.connector-line {
+    flex: 1;
+    width: 2px;
+    background: linear-gradient(180deg, var(--agent-color, #6366f1) 0%, rgba(99, 102, 241, 0.2) 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Animated data packets flowing down the connector */
+.connector-line::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    left: 0;
+    width: 100%;
+    height: 20px;
+    background: linear-gradient(180deg, transparent, var(--agent-color, #6366f1), transparent);
+    animation: data-flow 1.5s ease-in-out infinite;
+}
+
+@keyframes data-flow {
+    0% {
+        top: -20px;
+        opacity: 0;
+    }
+
+    20% {
+        opacity: 1;
+    }
+
+    80% {
+        opacity: 1;
+    }
+
+    100% {
+        top: calc(100% + 20px);
+        opacity: 0;
+    }
+}
+
+.connector-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 10px var(--agent-color, #6366f1);
+    animation: dot-glow 2s ease-in-out infinite;
+}
+
+@keyframes dot-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 10px var(--agent-color, #6366f1);
+    }
+
+    50% {
+        box-shadow: 0 0 20px var(--agent-color, #6366f1), 0 0 40px var(--agent-color, #6366f1);
+    }
+}
+
+/* Step Card */
+.step-card {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: rgba(30, 30, 50, 0.6);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.agent-step.latest .step-card {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: var(--agent-color, rgba(99, 102, 241, 0.3));
+    box-shadow: 0 0 30px rgba(99, 102, 241, 0.1);
+}
+
+/* Agent Avatar with animated ring */
+.agent-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 15px var(--agent-color, rgba(99, 102, 241, 0.3));
+}
+
+/* Orbital ring around active agent */
+.agent-step.latest .agent-avatar::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 2px dashed var(--agent-color, #6366f1);
+    animation: orbit-spin 3s linear infinite;
+    opacity: 0.6;
+}
+
+.agent-step.latest .agent-avatar::after {
+    content: '';
+    position: absolute;
+    inset: -12px;
+    border-radius: 50%;
+    border: 1px solid var(--agent-color, #6366f1);
+    animation: orbit-spin-reverse 4s linear infinite;
+    opacity: 0.3;
+}
+
+@keyframes orbit-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes orbit-spin-reverse {
+    from {
+        transform: rotate(360deg);
+    }
+
+    to {
+        transform: rotate(0deg);
+    }
+}
+
+.agent-step.latest .agent-avatar {
+    animation: avatar-breathe 1.5s ease-in-out infinite;
+    box-shadow:
+        0 0 20px var(--agent-color, rgba(99, 102, 241, 0.5)),
+        0 0 40px var(--agent-color, rgba(99, 102, 241, 0.3));
+}
+
+@keyframes avatar-breathe {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.08);
+    }
+}
+
+.agent-emoji {
+    font-size: 24px;
+    position: relative;
+    z-index: 1;
+    animation: emoji-bounce 2s ease-in-out infinite;
+}
+
+.agent-step.latest .agent-emoji {
+    animation: emoji-pulse 1s ease-in-out infinite;
+}
+
+@keyframes emoji-bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-2px);
+    }
+}
+
+@keyframes emoji-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.15);
+    }
+}
+
+.avatar-pulse {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 3px solid;
+    opacity: 0;
+    animation: avatar-pulse-ring 1.2s ease-out infinite;
+}
+
+.agent-step.latest .avatar-pulse {
+    animation: avatar-pulse-ring-fast 0.8s ease-out infinite;
+}
+
+@keyframes avatar-pulse-ring {
+    0% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: scale(1.6);
+        opacity: 0;
+    }
+}
+
+@keyframes avatar-pulse-ring-fast {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(2);
+        opacity: 0;
+    }
+}
+
+/* Step Details */
+.step-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.agent-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.agent-name {
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.agent-role {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.step-action {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.4;
+}
+
+.step-extra {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 4px;
+    font-style: italic;
+}
+
+/* Step Status */
+.step-status {
+    flex-shrink: 0;
+}
+
+.status-working {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--agent-color, #6366f1);
+    font-weight: 600;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--agent-color, #6366f1);
+    animation: status-blink 0.8s ease-in-out infinite;
+}
+
+@keyframes status-blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+.status-done {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* Initial Loading */
+.initial-loading {
+    text-align: center;
+    padding: 30px;
+}
+
+.loading-agents {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.floating-agent {
+    font-size: 28px;
+    animation: float-agent 1s ease-in-out infinite;
+}
+
+@keyframes float-agent {
+
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+    }
+
+    50% {
+        transform: translateY(-10px) scale(1.1);
+    }
+}
+
+.initial-loading p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+    margin: 0;
+}
+
+/* Progress Bar */
+.thinking-progress {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.progress-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 30%;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6, #6366f1);
+    background-size: 200% 100%;
+    border-radius: 2px;
+    animation: progress-flow 1.5s ease-in-out infinite;
+}
+
+@keyframes progress-flow {
+    0% {
+        background-position: 0% 0%;
+        width: 20%;
+    }
+
+    50% {
+        width: 60%;
+    }
+
+    100% {
+        background-position: 200% 0%;
+        width: 20%;
+    }
+}
+
+.progress-text {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+}
+
+/* Agent Communication Lines - Animated pulse between agents */
+.agent-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 29px;
+    bottom: -8px;
+    width: 2px;
+    height: 16px;
+    background: linear-gradient(180deg, var(--agent-color, #6366f1), transparent);
+}
+
+/* Communication pulse animation */
+.agent-step.latest .step-connector .connector-line::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: var(--agent-color, #6366f1);
+    border-radius: 50%;
+    top: 50%;
+    left: -3px;
+    box-shadow: 0 0 10px var(--agent-color, #6366f1);
+    animation: comm-pulse 0.8s ease-out infinite;
+}
+
+@keyframes comm-pulse {
+    0% {
+        transform: translateY(-50%) scale(0.5);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(-50%) scale(2);
+        opacity: 0;
+    }
+}

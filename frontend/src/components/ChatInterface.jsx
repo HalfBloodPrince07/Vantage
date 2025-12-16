@@ -5,6 +5,7 @@ import ChatSidebar from './ChatSidebar';
 import DocumentSelector from './DocumentSelector';
 import SettingsPanel from './SettingsPanel';
 import EntityGraphModal from './EntityGraphModal';
+import AgentThinkingCinematic from './AgentThinkingCinematic';
 import './ChatInterface.css';
 
 // Helper functions
@@ -490,10 +491,10 @@ const ChatInterface = ({ userId = 'user_1', onLogout, onIndexingStart }) => {
         }
     }, []);
 
-    // Auto-scroll to bottom when new messages arrive
+    // Auto-scroll to bottom when new messages arrive or steps update
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    }, [messages, steps, loading]);
 
     useEffect(() => {
         if (currentConversationId) {
@@ -667,36 +668,9 @@ const ChatInterface = ({ userId = 'user_1', onLogout, onIndexingStart }) => {
                             />
                         ))}
 
-                        {steps.length > 0 && (
-                            <div className="thinking-steps">
-                                <h4>
-                                    🤖 {steps.length > 0 && steps[steps.length - 1].agent
-                                        ? `${steps[steps.length - 1].agent} is ${steps[steps.length - 1].action.toLowerCase()}...`
-                                        : 'Thinking...'}
-                                </h4>
-                                <div className="steps-list">
-                                    {steps.map((step, idx) => (
-                                        <div key={idx} className="step-item">
-                                            <div className="step-indicator">
-                                                <div className="step-dot"></div>
-                                                {idx < steps.length - 1 && <div className="step-line"></div>}
-                                            </div>
-                                            <div className="step-content">
-                                                <div className="step-header">
-                                                    <span className="step-agent">📍 {step.agent || 'Agent'}</span>
-                                                    <span className="step-timestamp">
-                                                        {step.timestamp ? new Date(step.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''}
-                                                    </span>
-                                                </div>
-                                                <div className="step-action">{step.action}</div>
-                                                {step.details && (
-                                                    <div className="step-details">{step.details}</div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                        {/* Cinematic Agent Thinking Visualization */}
+                        {(steps.length > 0 || loading) && (
+                            <AgentThinkingCinematic steps={steps} isLoading={loading} />
                         )}
                         <div ref={messagesEndRef} />
                     </div>

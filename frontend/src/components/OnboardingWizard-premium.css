@@ -1,0 +1,568 @@
+/* OnboardingWizard-premium.css - Enhanced premium styling */
+
+/* Premium Auth Overlay with Parallax */
+.premium-auth {
+    background: linear-gradient(135deg, #0a0a0f 0%, #12121a 50%, #1a1a2e 100%);
+    perspective: 1000px;
+}
+
+/* Parallax container for glass card */
+.glass-card {
+    background: rgba(18, 18, 26, 0.85) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        0 0 60px rgba(0, 212, 255, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transform-style: preserve-3d;
+    transition: transform 0.1s ease-out;
+}
+
+.glass-card:hover {
+    transform: translateZ(10px);
+}
+
+/* Gradient Title */
+.gradient-title {
+    background: linear-gradient(135deg, #00d4ff, #8b5cf6, #ff00ff);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    animation: gradient-shift 4s ease-in-out infinite;
+}
+
+@keyframes gradient-shift {
+
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+.subtitle {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Rotating Facts */
+.rotating-facts {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(139, 92, 246, 0.08));
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    border-radius: 12px;
+    margin: 20px 0;
+    animation: fact-fade-in 0.5s ease-out;
+    min-height: 60px;
+    position: relative;
+    overflow: hidden;
+}
+
+.rotating-facts::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.1), transparent);
+    animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        left: -100%;
+    }
+
+    100% {
+        left: 100%;
+    }
+}
+
+@keyframes fact-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fact-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+    animation: fact-icon-pulse 2s ease-in-out infinite;
+}
+
+@keyframes fact-icon-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+.fact-text {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.5;
+}
+
+/* Premium Buttons - More Interactive */
+.premium-btn {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border: 1px solid rgba(0, 212, 255, 0.2) !important;
+}
+
+.premium-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(139, 92, 246, 0.15));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.premium-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(0, 212, 255, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.5s, height 0.5s;
+}
+
+.premium-btn:hover::before {
+    opacity: 1;
+}
+
+.premium-btn:hover::after {
+    width: 300px;
+    height: 300px;
+    opacity: 0;
+}
+
+.premium-btn:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow:
+        0 12px 30px rgba(0, 212, 255, 0.25),
+        0 0 40px rgba(0, 212, 255, 0.1);
+    border-color: rgba(0, 212, 255, 0.5) !important;
+}
+
+.premium-btn:active {
+    transform: translateY(-2px) scale(0.98);
+}
+
+.premium-btn-primary {
+    background: linear-gradient(135deg, #00d4ff, #8b5cf6) !important;
+    border: none !important;
+    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.premium-btn-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #8b5cf6, #00d4ff);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.premium-btn-primary:hover:not(:disabled) {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow:
+        0 8px 35px rgba(0, 212, 255, 0.5),
+        0 0 60px rgba(139, 92, 246, 0.3);
+}
+
+.premium-btn-primary:hover::before {
+    opacity: 1;
+}
+
+/* Premium Input */
+.premium-input {
+    background: rgba(37, 37, 56, 0.9) !important;
+    border: 2px solid rgba(255, 255, 255, 0.08) !important;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.premium-input:focus {
+    border-color: rgba(0, 212, 255, 0.6) !important;
+    box-shadow:
+        0 0 0 4px rgba(0, 212, 255, 0.1),
+        0 0 30px rgba(0, 212, 255, 0.15),
+        inset 0 0 20px rgba(0, 212, 255, 0.03) !important;
+    background: rgba(37, 37, 56, 1) !important;
+}
+
+/* Glass Info Box */
+.glass-info {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(139, 92, 246, 0.05)) !important;
+    border: 1px solid rgba(0, 212, 255, 0.2) !important;
+}
+
+/* ============================================
+   AI MASCOT - Redesigned Robot Face
+   ============================================ */
+
+.password-field-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+.ai-mascot {
+    position: relative;
+    width: 90px;
+    height: 90px;
+    margin-bottom: 16px;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 10;
+}
+
+.mascot-face {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #2d2d4a 0%, #1a1a30 100%);
+    border-radius: 50%;
+    border: 3px solid rgba(0, 212, 255, 0.5);
+    box-shadow:
+        0 0 40px rgba(0, 212, 255, 0.25),
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        inset 0 -15px 30px rgba(0, 0, 0, 0.3),
+        inset 0 5px 10px rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+}
+
+/* Robot antenna */
+.mascot-face::before {
+    content: '';
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 14px;
+    background: linear-gradient(to top, #2d2d4a, #00d4ff);
+    border-radius: 2px;
+}
+
+.mascot-face::after {
+    content: '';
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 12px;
+    height: 12px;
+    background: radial-gradient(circle, #00d4ff, #0088aa);
+    border-radius: 50%;
+    box-shadow: 0 0 15px #00d4ff, 0 0 30px rgba(0, 212, 255, 0.5);
+    animation: antenna-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes antenna-glow {
+
+    0%,
+    100% {
+        opacity: 1;
+        box-shadow: 0 0 15px #00d4ff, 0 0 30px rgba(0, 212, 255, 0.5);
+    }
+
+    50% {
+        opacity: 0.8;
+        box-shadow: 0 0 25px #00d4ff, 0 0 50px rgba(0, 212, 255, 0.7);
+    }
+}
+
+/* Robot eyes - Styled LEDs instead of emoji */
+.mascot-eyes {
+    display: flex;
+    gap: 20px;
+    position: relative;
+    z-index: 2;
+    margin-top: 5px;
+}
+
+.eye {
+    display: block;
+    width: 18px;
+    height: 18px;
+    background: radial-gradient(circle at 30% 30%, #00ffff, #00d4ff, #0088aa);
+    border-radius: 50%;
+    box-shadow:
+        0 0 15px #00d4ff,
+        0 0 30px rgba(0, 212, 255, 0.6),
+        inset 0 0 8px rgba(255, 255, 255, 0.3);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: eye-glow 2s ease-in-out infinite;
+    font-size: 0;
+    /* Hide emoji text */
+}
+
+@keyframes eye-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 15px #00d4ff, 0 0 30px rgba(0, 212, 255, 0.6);
+    }
+
+    50% {
+        box-shadow: 0 0 20px #00d4ff, 0 0 40px rgba(0, 212, 255, 0.8);
+    }
+}
+
+/* Eyes covered state - squint/close effect */
+.eye.covered {
+    height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #0088aa, #00d4ff);
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+/* Hands covering eyes */
+.mascot-hands {
+    position: absolute;
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    gap: 10px;
+    font-size: 28px;
+    opacity: 0;
+    top: 40%;
+    transform: translateY(30px) scale(0.5);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 5;
+    pointer-events: none;
+}
+
+.mascot-hands.covering {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+}
+
+.hand {
+    display: inline-block;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+    transition: transform 0.3s ease;
+}
+
+.hand.left {
+    transform: scaleX(-1) rotate(-20deg);
+}
+
+.hand.right {
+    transform: rotate(20deg);
+}
+
+/* ============================================
+   Mascot Mood States
+   ============================================ */
+
+/* Idle - Floating and breathing */
+.ai-mascot.idle {
+    animation: mascot-float 3s ease-in-out infinite;
+}
+
+@keyframes mascot-float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+.ai-mascot.idle .eye {
+    animation: eye-blink 4s ease-in-out infinite, eye-glow 2s ease-in-out infinite;
+}
+
+@keyframes eye-blink {
+
+    0%,
+    90%,
+    100% {
+        height: 18px;
+        border-radius: 50%;
+    }
+
+    95% {
+        height: 3px;
+        border-radius: 2px;
+    }
+}
+
+/* Hiding - Reacting to password input */
+.ai-mascot.hiding {
+    transform: translateY(-10px) scale(1.08);
+}
+
+.ai-mascot.hiding .mascot-face {
+    border-color: rgba(255, 120, 120, 0.6);
+    box-shadow:
+        0 0 40px rgba(255, 120, 120, 0.2),
+        0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Peeking - After password blur */
+.ai-mascot.peeking .eye {
+    animation: eye-peek 0.6s ease-out;
+}
+
+@keyframes eye-peek {
+    0% {
+        height: 4px;
+    }
+
+    50% {
+        height: 22px;
+    }
+
+    100% {
+        height: 18px;
+    }
+}
+
+/* Celebrating - Success state */
+.ai-mascot.celebrating {
+    animation: mascot-celebrate 0.8s ease-out;
+}
+
+.ai-mascot.celebrating .mascot-face {
+    border-color: rgba(0, 255, 136, 0.7);
+    box-shadow:
+        0 0 50px rgba(0, 255, 136, 0.35),
+        0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.ai-mascot.celebrating .eye {
+    background: radial-gradient(circle at 30% 30%, #00ff88, #00cc66);
+    box-shadow: 0 0 20px #00ff88, 0 0 40px rgba(0, 255, 136, 0.6);
+}
+
+@keyframes mascot-celebrate {
+
+    0%,
+    100% {
+        transform: translateY(0) rotate(0deg) scale(1);
+    }
+
+    20% {
+        transform: translateY(-15px) rotate(-12deg) scale(1.1);
+    }
+
+    40% {
+        transform: translateY(-8px) rotate(12deg) scale(1.1);
+    }
+
+    60% {
+        transform: translateY(-12px) rotate(-6deg) scale(1.05);
+    }
+
+    80% {
+        transform: translateY(-4px) rotate(6deg) scale(1.02);
+    }
+}
+
+/* Password input full width */
+.password-field-wrapper .login-input {
+    width: 100%;
+}
+
+/* ============================================
+   Wizard Steps Enhancement
+   ============================================ */
+
+.wizard-steps {
+    position: relative;
+}
+
+.wizard-step.active {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(139, 92, 246, 0.2));
+    border: 1px solid rgba(0, 212, 255, 0.4);
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.1);
+}
+
+.wizard-step.completed {
+    background: rgba(0, 255, 136, 0.15);
+    border: 1px solid rgba(0, 255, 136, 0.4);
+    color: #00ff88;
+}
+
+/* ============================================
+   Parallax Background Elements
+   ============================================ */
+
+.premium-auth::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background:
+        radial-gradient(circle at 20% 80%, rgba(0, 212, 255, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(255, 0, 255, 0.02) 0%, transparent 40%);
+    animation: parallax-drift 20s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes parallax-drift {
+
+    0%,
+    100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+
+    25% {
+        transform: translate(2%, 1%) rotate(1deg);
+    }
+
+    50% {
+        transform: translate(-1%, 2%) rotate(-1deg);
+    }
+
+    75% {
+        transform: translate(-2%, -1%) rotate(0.5deg);
+    }
+}

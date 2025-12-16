@@ -1,7 +1,27 @@
 // Updated OnboardingWizard with Sign Up / Sign In first screen
-import React, { useState, useRef } from 'react';
+// Enhanced with rotating facts, AI mascot, and premium animations
+import React, { useState, useRef, useEffect } from 'react';
 import './LoginSettings.css';
 import './OnboardingWizard.css';
+import './OnboardingWizard-premium.css';
+import AmbientParticles from './AmbientParticles';
+import CreatorBadge from './CreatorBadge';
+
+// Rotating facts for the login screen
+const RANDOM_FACTS = [
+    { icon: '🧠', text: 'GPT-4 has over 1.7 trillion parameters, making it one of the largest AI models.' },
+    { icon: '🚀', text: 'The first computer program was written by Ada Lovelace in 1843.' },
+    { icon: '🌌', text: 'There are more stars in the universe than grains of sand on Earth.' },
+    { icon: '🤖', text: 'The term "Artificial Intelligence" was coined by John McCarthy in 1956.' },
+    { icon: '💡', text: 'Neural networks are inspired by the structure of the human brain.' },
+    { icon: '🔬', text: 'Quantum computers can process certain calculations 100 million times faster.' },
+    { icon: '🌍', text: 'The internet weighs about the same as a strawberry in electrons.' },
+    { icon: '✨', text: 'AI can now generate photorealistic images from text descriptions.' },
+    { icon: '📚', text: 'The first AI program, Logic Theorist, was created in 1955.' },
+    { icon: '🎨', text: 'AI-generated art has sold for over $400,000 at auction.' },
+    { icon: '🔮', text: 'Machine learning models can predict protein structures with 98% accuracy.' },
+    { icon: '🛸', text: 'NASA uses AI to analyze data from Mars rovers autonomously.' }
+];
 
 const OnboardingWizard = ({ onComplete }) => {
     const [step, setStep] = useState(0); // 0: choice, 1: auth, 2: setup
@@ -17,6 +37,43 @@ const OnboardingWizard = ({ onComplete }) => {
     const [loading, setLoading] = useState(false);
     const fileInputRef = useRef(null);
     const folderInputRef = useRef(null);
+
+    // AI Mascot and Facts state
+    const [currentFact, setCurrentFact] = useState(RANDOM_FACTS[0]);
+    const [factIndex, setFactIndex] = useState(0);
+    const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+    const [mascotMood, setMascotMood] = useState('idle'); // idle, hiding, peeking, celebrating
+
+    // Rotate facts every 5 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setFactIndex(prev => {
+                const next = (prev + 1) % RANDOM_FACTS.length;
+                setCurrentFact(RANDOM_FACTS[next]);
+                return next;
+            });
+        }, 5000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Handle password focus for mascot
+    const handlePasswordFocus = () => {
+        setIsPasswordFocused(true);
+        setMascotMood('hiding');
+    };
+
+    const handlePasswordBlur = () => {
+        setIsPasswordFocused(false);
+        setMascotMood('peeking');
+        setTimeout(() => setMascotMood('idle'), 1000);
+    };
+
+    // Celebrate on successful auth
+    useEffect(() => {
+        if (step === 2) {
+            setMascotMood('celebrating');
+        }
+    }, [step]);
 
     const handleAuthModeSelect = (mode) => {
         setAuthMode(mode);
@@ -194,10 +251,17 @@ const OnboardingWizard = ({ onComplete }) => {
     // Step 0: Sign Up or Sign In Choice
     if (step === 0) {
         return (
-            <div className="login-overlay">
-                <div className="login-container">
-                    <h1>🔍 LocalLens</h1>
-                    <p>AI-Powered Document Search</p>
+            <div className="login-overlay premium-auth">
+                <AmbientParticles particleCount={25} />
+                <div className="login-container glass-card">
+                    <h1 className="gradient-title">🔍 LocalLens</h1>
+                    <p className="subtitle">AI-Powered Document Search</p>
+
+                    {/* Rotating Facts */}
+                    <div className="rotating-facts" key={factIndex}>
+                        <span className="fact-icon">{currentFact.icon}</span>
+                        <span className="fact-text">{currentFact.text}</span>
+                    </div>
 
                     <div className="auth-choice">
                         <h2>Welcome!</h2>
@@ -205,7 +269,7 @@ const OnboardingWizard = ({ onComplete }) => {
 
                         <div className="choice-buttons">
                             <button
-                                className="choice-btn signup"
+                                className="choice-btn signup premium-btn"
                                 onClick={() => handleAuthModeSelect('signup')}
                             >
                                 <div className="choice-icon">✨</div>
@@ -214,7 +278,7 @@ const OnboardingWizard = ({ onComplete }) => {
                             </button>
 
                             <button
-                                className="choice-btn signin"
+                                className="choice-btn signin premium-btn"
                                 onClick={() => handleAuthModeSelect('signin')}
                             >
                                 <div className="choice-icon">🔓</div>
@@ -228,6 +292,7 @@ const OnboardingWizard = ({ onComplete }) => {
                         <small>LocalLens v2.0 - Secure Document Assistant</small>
                     </div>
                 </div>
+                <CreatorBadge />
             </div>
         );
     }
@@ -235,14 +300,21 @@ const OnboardingWizard = ({ onComplete }) => {
     // Step 1: Authentication (Sign Up or Sign In)
     if (step === 1) {
         return (
-            <div className="login-overlay">
-                <div className="login-container">
+            <div className="login-overlay premium-auth">
+                <AmbientParticles particleCount={25} />
+                <div className="login-container glass-card">
                     <button className="back-btn" onClick={() => setStep(0)}>
                         ← Back
                     </button>
 
-                    <h1>🔍 LocalLens</h1>
-                    <p>{authMode === 'signup' ? 'Create Your Account' : 'Welcome Back'}</p>
+                    <h1 className="gradient-title">🔍 LocalLens</h1>
+                    <p className="subtitle">{authMode === 'signup' ? 'Create Your Account' : 'Welcome Back'}</p>
+
+                    {/* Rotating Facts */}
+                    <div className="rotating-facts" key={factIndex}>
+                        <span className="fact-icon">{currentFact.icon}</span>
+                        <span className="fact-text">{currentFact.text}</span>
+                    </div>
 
                     <div className="wizard-steps">
                         <div className="wizard-step active">1. {authMode === 'signup' ? 'Sign Up' : 'Sign In'}</div>
@@ -256,7 +328,7 @@ const OnboardingWizard = ({ onComplete }) => {
                                 placeholder="Enter user ID"
                                 value={userId}
                                 onChange={(e) => setUserId(e.target.value)}
-                                className="login-input"
+                                className="login-input premium-input"
                                 autoFocus
                             />
                             {authMode === 'signup' && (
@@ -270,14 +342,31 @@ const OnboardingWizard = ({ onComplete }) => {
                             )}
                         </div>
 
-                        <input
-                            type="password"
-                            placeholder={authMode === 'signup' ? "Create password (min 6 chars)" : "Enter password"}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && authMode === 'signin' && handleLogin()}
-                            className="login-input"
-                        />
+                        {/* Password field with AI Mascot */}
+                        <div className="password-field-wrapper">
+                            <div className={`ai-mascot ${mascotMood}`}>
+                                <div className="mascot-face">
+                                    <div className="mascot-eyes">
+                                        <span className={`eye left ${isPasswordFocused ? 'covered' : ''}`}>👁</span>
+                                        <span className={`eye right ${isPasswordFocused ? 'covered' : ''}`}>👁</span>
+                                    </div>
+                                    <div className={`mascot-hands ${isPasswordFocused ? 'covering' : ''}`}>
+                                        <span className="hand left">🤚</span>
+                                        <span className="hand right">🤚</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <input
+                                type="password"
+                                placeholder={authMode === 'signup' ? "Create password (min 6 chars)" : "Enter password"}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                onFocus={handlePasswordFocus}
+                                onBlur={handlePasswordBlur}
+                                onKeyPress={(e) => e.key === 'Enter' && authMode === 'signin' && handleLogin()}
+                                className="login-input premium-input"
+                            />
+                        </div>
 
                         {authMode === 'signup' && (
                             <input
@@ -285,14 +374,16 @@ const OnboardingWizard = ({ onComplete }) => {
                                 placeholder="Confirm password"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
+                                onFocus={handlePasswordFocus}
+                                onBlur={handlePasswordBlur}
                                 onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
-                                className="login-input"
+                                className="login-input premium-input"
                             />
                         )}
 
                         {error && <div className="error-message">❌ {error}</div>}
 
-                        <div className="info-box">
+                        <div className="info-box glass-info">
                             <strong>🔒 {authMode === 'signup' ? 'Secure Registration' : 'Secure Login'}</strong>
                             <p>{authMode === 'signup'
                                 ? 'Create a secure password (min 6 characters) to protect your account'
@@ -303,7 +394,7 @@ const OnboardingWizard = ({ onComplete }) => {
                         <button
                             onClick={handleLogin}
                             disabled={loading || !userId.trim() || !password.trim()}
-                            className="login-btn"
+                            className="login-btn premium-btn-primary"
                         >
                             {loading ? '⏳ Processing...' : authMode === 'signup' ? '✨ Create Account' : '🔓 Sign In'}
                         </button>
@@ -313,6 +404,7 @@ const OnboardingWizard = ({ onComplete }) => {
                         <small>LocalLens v2.0</small>
                     </div>
                 </div>
+                <CreatorBadge />
             </div>
         );
     }
