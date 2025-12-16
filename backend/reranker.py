@@ -53,7 +53,8 @@ class CrossEncoderReranker:
         pairs = []
         for doc in documents:
             # Combine summary with keywords for better matching
-            text = doc.get('content_summary', '')
+            # Try detailed_summary first, then fall back to content_summary
+            text = doc.get('detailed_summary', '') or doc.get('content_summary', '')
             keywords = doc.get('keywords', '')
             if keywords:
                 text = f"{text}\nKeywords: {keywords}"
@@ -201,7 +202,7 @@ class CrossEncoderReranker:
         Explain why a document ranks high for a query.
         Useful for debugging and transparency.
         """
-        text = document.get('content_summary', '')
+        text = document.get('detailed_summary', '') or document.get('content_summary', '')
         
         # Get score
         score = self.model.predict([[query, text]])[0]

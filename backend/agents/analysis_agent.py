@@ -49,7 +49,7 @@ class AnalysisAgent:
         # Extract document summaries
         doc_summaries = []
         for i, doc in enumerate(documents[:3], 1):  # Limit to top 3
-            summary = doc.get('content_summary', doc.get('content', ''))[:500]
+            summary = (doc.get('detailed_summary', '') or doc.get('content_summary', '') or doc.get('content', ''))[:500]
             doc_summaries.append(f"Document {i} ({doc['filename']}): {summary}")
 
         summaries_text = "\n\n".join(doc_summaries)
@@ -124,7 +124,7 @@ Return JSON:
             doc_info.append({
                 "filename": doc['filename'],
                 "type": doc.get('document_type', 'unknown'),
-                "summary": doc.get('content_summary', '')[:200]
+                "summary": (doc.get('detailed_summary', '') or doc.get('content_summary', ''))[:200]
             })
 
         prompt = f"""Aggregate data from these documents for: "{aggregation_type}"
@@ -193,7 +193,7 @@ Respond in JSON:
                 dated_docs.append({
                     "date": doc_date,
                     "filename": doc['filename'],
-                    "summary": doc.get('content_summary', '')[:200]
+                    "summary": (doc.get('detailed_summary', '') or doc.get('content_summary', ''))[:200]
                 })
 
         if not dated_docs:
@@ -264,7 +264,7 @@ Respond in JSON:
             Dict with agent info and list of insights
         """
         doc_summaries = [
-            f"{doc['filename']}: {doc.get('content_summary', '')[:150]}"
+            f"{doc['filename']}: {(doc.get('detailed_summary', '') or doc.get('content_summary', ''))[:150]}"
             for doc in documents[:5]
         ]
 

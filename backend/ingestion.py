@@ -174,8 +174,9 @@ class IngestionPipeline:
             detailed_summary = summary_data['summary']
             keywords = summary_data.get('keywords', '')
             entities = summary_data.get('entities', [])
+            relationships = summary_data.get('relationships', [])
             topics = summary_data.get('topics', [])
-            logger.debug(f"  ✓ Detailed summary generated (length: {len(detailed_summary)})")
+            logger.debug(f"  ✓ Detailed summary generated (length: {len(detailed_summary)}, {len(relationships)} relationships)")
 
             # 3. Determine document type
             logger.debug(f"  [3/4] Classifying document type for {file_path.name}")
@@ -229,6 +230,16 @@ class IngestionPipeline:
 
             # Index document in OpenSearch
             await self.opensearch.index_document(document)
+
+            # === NEW: Index entities/relationships in Knowledge Graph ===
+            if entities or relationships:
+                await self._index_to_knowledge_graph(
+                    doc_id=doc_id, 
+                    filename=file_path.name,
+                    entities=entities,
+                    relationships=relationships,
+                    content=detailed_summary
+                )
 
             elapsed = (datetime.now() - start_time).total_seconds()
             logger.info(f"✓ Successfully indexed: {file_path.name} (took {elapsed:.2f}s)")
@@ -410,6 +421,9 @@ Describe the main sections, topics, and content in detail.
 ## Entities
 List all important names, organizations, locations, and specific identifiers.
 
+## Relationships
+Identify key relationships between entities (e.g., "Apple" | "competitor_of" | "Google").
+
 ## Topics
 What are the main themes and subject areas covered?
 
@@ -426,6 +440,10 @@ SUMMARY:
 KEYWORDS: [keyword1, keyword2, keyword3, keyword4, keyword5, ...]
 
 ENTITIES: [entity1, entity2, entity3, ...]
+
+RELATIONSHIPS:
+[Entity1 | relationship_type | Entity2]
+[Entity3 | relationship_type | Entity4]
 
 TOPICS: [topic1, topic2, topic3, ...]"""
 
@@ -621,11 +639,12 @@ TOPICS: [topic1, topic2, topic3, ...]"""
         }
     
     def _parse_detailed_response(self, response: str) -> Dict[str, Any]:
-        """Parse the detailed summary response with topics"""
+        """Parse the detailed summary response with topics and relationships"""
         result = {
             "summary": "",
             "keywords": "",
             "entities": [],
+            "relationships": [],
             "topics": []
         }
         
@@ -635,19 +654,36 @@ TOPICS: [topic1, topic2, topic3, ...]"""
             result['summary'] = summary_match.group(1).strip()
         
         # Extract keywords
-        keywords_match = re.search(r'KEYWORDS:\s*(.+?)(?=ENTITIES:|TOPICS:|$)', response, re.DOTALL | re.IGNORECASE)
+        keywords_match = re.search(r'KEYWORDS:\s*(.+?)(?=ENTITIES:|RELATIONSHIPS:|TOPICS:|$)', response, re.DOTALL | re.IGNORECASE)
         if keywords_match:
             keywords_text = keywords_match.group(1).strip()
             keywords_text = re.sub(r'[\[\]]', '', keywords_text)
             result['keywords'] = keywords_text
         
         # Extract entities
-        entities_match = re.search(r'ENTITIES:\s*(.+?)(?=TOPICS:|$)', response, re.DOTALL | re.IGNORECASE)
+        entities_match = re.search(r'ENTITIES:\s*(.+?)(?=RELATIONSHIPS:|TOPICS:|$)', response, re.DOTALL | re.IGNORECASE)
         if entities_match:
             entities_text = entities_match.group(1).strip()
             entities_text = re.sub(r'[\[\]]', '', entities_text)
             entities = [e.strip() for e in entities_text.split(',') if e.strip()]
             result['entities'] = entities[:30]
+        
+        # Extract relationships (format: Entity1 | relationship_type | Entity2)
+        relationships_match = re.search(r'RELATIONSHIPS:\s*(.+?)(?=TOPICS:|$)', response, re.DOTALL | re.IGNORECASE)
+        if relationships_match:
+            relationships_text = relationships_match.group(1).strip()
+            # Parse each line for pipe-separated triples
+            for line in relationships_text.split('\n'):
+                line = line.strip()
+                if '|' in line:
+                    parts = [p.strip().strip('[]') for p in line.split('|')]
+                    if len(parts) >= 3:
+                        result['relationships'].append({
+                            "source": parts[0],
+                            "type": parts[1].lower().replace(' ', '_'),
+                            "target": parts[2]
+                        })
+            result['relationships'] = result['relationships'][:15]  # Limit
         
         # Extract topics
         topics_match = re.search(r'TOPICS:\s*(.+?)$', response, re.DOTALL | re.IGNORECASE)
@@ -972,3 +1008,113 @@ Return only the alternative queries, one per line, without numbering or explanat
     async def close(self):
         """Close HTTP client"""
         await self.client.aclose()
+
+    async def _index_to_knowledge_graph(
+        self, 
+        doc_id: str, 
+        filename: str, 
+        entities: List[str], 
+        relationships: List[Dict[str, str]],
+        content: str
+    ):
+        """
+        Index entities and relationships into the Knowledge Graph.
+        """
+        try:
+            from backend.graph import KnowledgeGraph
+            
+            # Get or create global knowledge graph
+            if not hasattr(self, '_knowledge_graph'):
+                self._knowledge_graph = KnowledgeGraph()
+            
+            kg = self._knowledge_graph
+            
+            # Track entity IDs for relationship linking
+            entity_id_map = {}
+            
+            # Add entities
+            for entity_name in entities[:20]:  # Limit to 20 entities per doc
+                entity_name = entity_name.strip()
+                if not entity_name or len(entity_name) < 2:
+                    continue
+                    
+                # Infer entity type from name patterns
+                entity_type = self._infer_entity_type(entity_name)
+                entity_id = hashlib.md5(f"{entity_name.lower()}_{entity_type}".encode()).hexdigest()[:16]
+                entity_id_map[entity_name.lower()] = entity_id
+                
+                kg.add_entity(
+                    entity_id=entity_id,
+                    name=entity_name,
+                    entity_type=entity_type.upper(),
+                    properties={"source_doc": doc_id, "filename": filename},
+                    document_id=doc_id
+                )
+            
+            # Add relationships extracted by LLM
+            rel_count = 0
+            for rel in relationships[:15]:  # Limit relationships
+                source_name = rel.get('source', '').lower()
+                target_name = rel.get('target', '').lower()
+                rel_type = rel.get('type', 'related_to').upper()
+                
+                # Get or create entity IDs
+                source_id = entity_id_map.get(source_name)
+                target_id = entity_id_map.get(target_name)
+                
+                # If either entity wasn't in our list, create them on-demand
+                if not source_id:
+                    source_id = hashlib.md5(f"{source_name}_concept".encode()).hexdigest()[:16]
+                    kg.add_entity(entity_id=source_id, name=rel['source'], entity_type='CONCEPT', document_id=doc_id)
+                    entity_id_map[source_name] = source_id
+                    
+                if not target_id:
+                    target_id = hashlib.md5(f"{target_name}_concept".encode()).hexdigest()[:16]
+                    kg.add_entity(entity_id=target_id, name=rel['target'], entity_type='CONCEPT', document_id=doc_id)
+                    entity_id_map[target_name] = target_id
+                
+                # Add the relationship edge
+                if kg.add_relationship(
+                    source_id=source_id,
+                    target_id=target_id,
+                    relationship_type=rel_type,
+                    weight=1.0,
+                    document_id=doc_id
+                ):
+                    rel_count += 1
+            
+            # Log success
+            logger.debug(f"🌐 Indexed {len(entities)} entities, {rel_count} relationships from {filename}")
+            
+        except Exception as e:
+            logger.warning(f"Knowledge graph indexing failed for {filename}: {e}")
+    
+    def _infer_entity_type(self, entity_name: str) -> str:
+        """Infer entity type from name patterns"""
+        name_lower = entity_name.lower()
+        
+        # Organization patterns
+        org_suffixes = ['inc', 'corp', 'llc', 'ltd', 'company', 'co', 'group', 'foundation']
+        if any(suf in name_lower for suf in org_suffixes):
+            return 'organization'
+        
+        # Location patterns (simple heuristics)
+        if any(kw in name_lower for kw in ['city', 'state', 'country', 'street', 'avenue', 'road']):
+            return 'location'
+        
+        # Date patterns
+        if any(kw in name_lower for kw in ['january', 'february', 'march', 'april', 'may', 'june',
+                                           'july', 'august', 'september', 'october', 'november', 'december']):
+            return 'date'
+        
+        # Monetary patterns
+        if '$' in entity_name or '€' in entity_name or any(kw in name_lower for kw in ['dollar', 'euro', 'usd']):
+            return 'monetary'
+        
+        # Person pattern (has space, likely a name)
+        parts = entity_name.split()
+        if 2 <= len(parts) <= 4 and all(p[0].isupper() for p in parts if p):
+            return 'person'
+        
+        # Default to concept
+        return 'concept'

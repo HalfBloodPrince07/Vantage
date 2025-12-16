@@ -1,96 +1,164 @@
 # backend/agents/critic_agent.py
 """
-Critic Agent - Self-reflection and Quality Control
+Critic Agent - Self-RAG and Quality Control
+============================================
+Diogenes - The Critic
 
-Implements the critic pattern for quality assurance
+Extended with Self-RAG (Corrective RAG) capabilities:
+- Retrieval quality evaluation with detailed scoring
+- Query reformulation suggestions
+- Hallucination detection
+- Confidence-aware feedback
+- Retrieval loop control
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
+from dataclasses import dataclass
 import httpx
 from loguru import logger
 import json
-from backend.utils.llm_utils import call_ollama_json
+from backend.utils.llm_utils import call_ollama_json, call_ollama_with_retry
+
+
+@dataclass
+class RetrievalQuality:
+    """Assessment of retrieval quality"""
+    overall_score: float  # 0.0-1.0
+    relevance_score: float
+    coverage_score: float  # How well results cover the query
+    diversity_score: float  # Variety in results
+    confidence: float
+    issues: List[str]
+    is_sufficient: bool  # Whether results are good enough
+    
+
+@dataclass
+class ReformulationSuggestion:
+    """Suggested query reformulation"""
+    original_query: str
+    reformulated_query: str
+    strategy: str  # expand, narrow, rephrase, add_context
+    expected_improvement: str
+    confidence: float
 
 
 class CriticAgent:
     """
-    Agent that evaluates and critiques search results
-
-    Checks for:
-    - Relevance
-    - Completeness
-    - Hallucination detection
-    - Quality assessment
+    Diogenes - The Critic
+    
+    The cynic philosopher - I question everything and evaluate quality.
+    
+    Extended with Self-RAG capabilities:
+    - Evaluate retrieval quality and decide if reformulation needed
+    - Suggest query reformulations
+    - Detect hallucinations in generated answers
+    - Control retrieval loops
     """
     AGENT_NAME = "Diogenes"
     AGENT_TITLE = "The Critic"
-    AGENT_DESCRIPTION = "The cynic - I evaluate the quality of your results"
+    AGENT_DESCRIPTION = "The cynic - I evaluate and control retrieval quality"
+    AGENT_ICON = "🔎"
 
     def __init__(self, config: Dict[str, Any]):
         self.name = f"{self.AGENT_NAME} ({self.AGENT_TITLE})"
         self.config = config
         self.ollama_url = config['ollama']['base_url']
         self.model = config['ollama']['text_model']['name']
+        
+        # Self-RAG thresholds
+        self.min_quality_threshold = 0.5  # Minimum quality to accept results
+        self.reformulation_threshold = 0.4  # Below this, definitely reformulate
+        self.max_retrieval_iterations = 3  # Maximum reformulation attempts
+        
+        logger.info(f"🔎 {self.name} initialized with Self-RAG capabilities")
 
-    async def evaluate_results(
+    async def evaluate_retrieval_quality(
         self,
         query: str,
-        results: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        results: List[Dict[str, Any]],
+        iteration: int = 1
+    ) -> RetrievalQuality:
         """
-        Evaluate quality of search results
-
+        Evaluate the quality of retrieval results (Self-RAG core).
+        
         Args:
-            query: Original query
-            results: Search results to evaluate
-
+            query: Original user query
+            results: Retrieved documents
+            iteration: Current retrieval iteration (for loop control)
+            
         Returns:
-            Quality assessment with score and recommendations
+            RetrievalQuality assessment
         """
         if not results:
-            return {
-                "quality_score": 0.0,
-                "completeness": 0.0,
-                "relevance": 0.0,
-                "recommendations": ["No results found. Try broadening your search terms."],
-                "should_reformulate": True
-            }
-
-        # Prepare results summary for evaluation
+            return RetrievalQuality(
+                overall_score=0.0,
+                relevance_score=0.0,
+                coverage_score=0.0,
+                diversity_score=0.0,
+                confidence=1.0,
+                issues=["No results retrieved"],
+                is_sufficient=False
+            )
+        
+        # Quick heuristic checks
+        issues = []
+        
+        # Check result scores
+        top_score = results[0].get('score', 0) if results else 0
+        avg_score = sum(r.get('score', 0) for r in results) / len(results) if results else 0
+        
+        if top_score < 0.3:
+            issues.append("Top result has low relevance score")
+        if avg_score < 0.2:
+            issues.append("Overall result quality is poor")
+        if len(results) < 2:
+            issues.append("Very few results found")
+        
+        # Check for diversity (different file types, sources)
+        file_types = set(r.get('file_type', '') for r in results)
+        diversity_score = min(len(file_types) / 3.0, 1.0)
+        
+        # Build prompt for LLM evaluation
         results_summary = []
         for i, r in enumerate(results[:5], 1):
+            summary = (r.get('detailed_summary', '') or r.get('content_summary', '') or r.get('text', ''))[:150]
             results_summary.append(
-                f"{i}. {r.get('filename', 'unknown')} (score: {r.get('score', 0):.2f})"
+                f"{i}. {r.get('filename', 'unknown')} (score: {r.get('score', 0):.2f})\n   {summary}"
             )
+        
+        prompt = f"""Evaluate retrieval quality for this search:
 
-        prompt = f"""Evaluate these search results for query: "{query}"
+QUERY: "{query}"
+ITERATION: {iteration} of {self.max_retrieval_iterations}
 
-Results:
+RESULTS:
 {chr(10).join(results_summary)}
+
+Evaluate these aspects (0.0-1.0):
+1. RELEVANCE: Do results actually answer what was asked?
+2. COVERAGE: Do results cover all aspects of the query?
+3. CONFIDENCE: How confident are you in this assessment?
+
+Also determine:
+- Is this result set SUFFICIENT to answer the query? (true/false)
+- What ISSUES exist with the results? (list specific problems)
 
 Return JSON:
 {{
-    "quality_score": 0.0-1.0,
     "relevance_score": 0.0-1.0,
-    "completeness_score": 0.0-1.0,
-    "strengths": ["strength1"],
-    "weaknesses": ["weakness1"],
-    "recommendations": ["rec1"],
-    "should_reformulate": true/false
-}}
-
-IMPORTANT: Return ONLY the raw JSON. Do not use markdown code blocks (```json)."""
+    "coverage_score": 0.0-1.0,
+    "confidence": 0.0-1.0,
+    "is_sufficient": true/false,
+    "issues": ["issue1", "issue2"]
+}}"""
 
         try:
-            # Default fallback for evaluation
-            fallback_data = {
-                "quality_score": 0.7,
-                "relevance_score": 0.7,
-                "completeness_score": 0.6,
-                "strengths": [],
-                "weaknesses": [],
-                "recommendations": [],
-                "should_reformulate": False
+            fallback = {
+                "relevance_score": 0.6,
+                "coverage_score": 0.5,
+                "confidence": 0.5,
+                "is_sufficient": len(results) >= 2 and top_score > 0.3,
+                "issues": issues
             }
             
             evaluation = await call_ollama_json(
@@ -100,134 +168,287 @@ IMPORTANT: Return ONLY the raw JSON. Do not use markdown code blocks (```json)."
                 max_retries=2,
                 timeout=self.config['ollama'].get('timeout', 120.0),
                 temperature=0.2,
-                fallback_data=fallback_data,
+                fallback_data=fallback,
                 model_type="text",
                 config=self.config
             )
-
-            return {
-                "agent": self.name,
-                "quality_score": float(evaluation.get('quality_score', 0.5)),
-                "relevance": float(evaluation.get('relevance_score', 0.5)),
-                "completeness": float(evaluation.get('completeness_score', 0.5)),
-                "strengths": evaluation.get('strengths', []),
-                "weaknesses": evaluation.get('weaknesses', []),
-                "recommendations": evaluation.get('recommendations', []),
-                "should_reformulate": evaluation.get('should_reformulate', False)
-            }
-
+            
+            relevance = float(evaluation.get('relevance_score', 0.5))
+            coverage = float(evaluation.get('coverage_score', 0.5))
+            overall = (relevance * 0.5 + coverage * 0.3 + diversity_score * 0.2)
+            
+            return RetrievalQuality(
+                overall_score=overall,
+                relevance_score=relevance,
+                coverage_score=coverage,
+                diversity_score=diversity_score,
+                confidence=float(evaluation.get('confidence', 0.5)),
+                issues=issues + evaluation.get('issues', []),
+                is_sufficient=evaluation.get('is_sufficient', overall >= self.min_quality_threshold)
+            )
+            
         except Exception as e:
-            logger.error(f"Result evaluation failed: {e}")
-            return {
-                "agent": self.name,
-                "quality_score": 0.7,  # Assume decent quality
-                "relevance": 0.7,
-                "completeness": 0.6,
-                "recommendations": []
-            }
+            logger.error(f"Retrieval quality evaluation failed: {e}")
+            overall = (top_score * 0.5 + avg_score * 0.3 + diversity_score * 0.2)
+            return RetrievalQuality(
+                overall_score=overall,
+                relevance_score=top_score,
+                coverage_score=avg_score,
+                diversity_score=diversity_score,
+                confidence=0.4,
+                issues=issues,
+                is_sufficient=overall >= self.min_quality_threshold
+            )
 
-    async def detect_hallucination(
+    def should_reformulate(self, quality: RetrievalQuality, iteration: int = 1) -> bool:
+        """
+        Decide if query should be reformulated based on quality.
+        
+        Args:
+            quality: RetrievalQuality assessment
+            iteration: Current iteration number
+            
+        Returns:
+            True if reformulation is recommended
+        """
+        # Don't reformulate if we've hit max iterations
+        if iteration >= self.max_retrieval_iterations:
+            logger.info(f"🔎 Max iterations ({self.max_retrieval_iterations}) reached, accepting results")
+            return False
+        
+        # Definitely reformulate if quality is very low
+        if quality.overall_score < self.reformulation_threshold:
+            logger.info(f"🔎 Quality score {quality.overall_score:.2f} below threshold, recommending reformulation")
+            return True
+        
+        # Don't reformulate if quality is sufficient
+        if quality.is_sufficient:
+            return False
+        
+        # Reformulate if relevance is specifically low
+        if quality.relevance_score < 0.4:
+            return True
+        
+        return False
+
+    async def suggest_reformulation(
         self,
         query: str,
-        response_text: str,
-        source_documents: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        quality: RetrievalQuality,
+        previous_results: List[Dict[str, Any]]
+    ) -> ReformulationSuggestion:
         """
-        Detect if response contains hallucinated information
-
+        Suggest how to reformulate the query for better results.
+        
         Args:
             query: Original query
-            response_text: Generated response
-            source_documents: Source documents used
+            quality: Quality assessment of current results
+            previous_results: Results that were deemed insufficient
+            
+        Returns:
+            ReformulationSuggestion with new query
+        """
+        issues_str = ", ".join(quality.issues[:3]) if quality.issues else "low relevance"
+        
+        prompt = f"""The search query didn't get good results. Suggest a better query.
 
+ORIGINAL QUERY: "{query}"
+ISSUES: {issues_str}
+
+Suggest ONE reformulated query that might get better results.
+Choose a strategy:
+- EXPAND: Add related terms to broaden search
+- NARROW: Be more specific to focus results  
+- REPHRASE: Use different words for same meaning
+- ADD_CONTEXT: Add context that might be in documents
+
+Return JSON:
+{{
+    "reformulated_query": "the new query",
+    "strategy": "EXPAND|NARROW|REPHRASE|ADD_CONTEXT",
+    "expected_improvement": "brief explanation",
+    "confidence": 0.0-1.0
+}}"""
+
+        try:
+            fallback = {
+                "reformulated_query": query,
+                "strategy": "EXPAND",
+                "expected_improvement": "Added broader terms",
+                "confidence": 0.5
+            }
+            
+            result = await call_ollama_json(
+                base_url=self.ollama_url,
+                model=self.model,
+                prompt=prompt,
+                max_retries=2,
+                timeout=self.config['ollama'].get('timeout', 120.0),
+                temperature=0.4,
+                fallback_data=fallback,
+                model_type="text",
+                config=self.config
+            )
+            
+            reformulated = result.get('reformulated_query', query)
+            
+            # Don't return identical query
+            if reformulated.lower().strip() == query.lower().strip():
+                # Simple fallback: try adding "documents about"
+                reformulated = f"documents about {query}"
+            
+            logger.info(f"🔎 Suggested reformulation: '{query}' -> '{reformulated}'")
+            
+            return ReformulationSuggestion(
+                original_query=query,
+                reformulated_query=reformulated,
+                strategy=result.get('strategy', 'EXPAND'),
+                expected_improvement=result.get('expected_improvement', ''),
+                confidence=float(result.get('confidence', 0.5))
+            )
+            
+        except Exception as e:
+            logger.error(f"Reformulation suggestion failed: {e}")
+            return ReformulationSuggestion(
+                original_query=query,
+                reformulated_query=f"files related to {query}",
+                strategy="EXPAND",
+                expected_improvement="Added broader context",
+                confidence=0.4
+            )
+
+    async def detect_hallucinations(
+        self,
+        answer: str,
+        query: str,
+        sources: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Detect if the generated answer contains hallucinations.
+        
+        Args:
+            answer: Generated answer text
+            query: Original query
+            sources: Source documents used
+            
         Returns:
             Hallucination detection results
         """
-        # Extract source summaries
-        source_summaries = [
-            doc.get('content_summary', '')[:200]
-            for doc in source_documents[:3]
-        ]
+        if not answer or not sources:
+            return {
+                "has_hallucination": False,
+                "confidence": 0.5,
+                "unsupported_claims": [],
+                "verification_status": "insufficient_data"
+            }
+        
+        # Extract source content
+        source_texts = []
+        for doc in sources[:3]:
+            text = (doc.get('detailed_summary', '') or doc.get('content_summary', '') or doc.get('text', '') or doc.get('raw_text', ''))[:500]
+            source_texts.append(f"[{doc.get('filename', 'unknown')}]: {text}")
+        
+        prompt = f"""Check if this answer is supported by the sources.
 
-        prompt = f"""Check for hallucinations in this response:
-Query: "{query}"
-Response: "{response_text}"
-Sources:
-{chr(10).join(f"{i+1}. {s}" for i, s in enumerate(source_summaries))}
+QUESTION: "{query}"
+
+ANSWER TO CHECK:
+{answer[:1000]}
+
+AVAILABLE SOURCES:
+{chr(10).join(source_texts)}
+
+Analyze the answer and identify:
+1. Claims that ARE supported by the sources
+2. Claims that are NOT supported (potential hallucinations)
+3. Overall verdict
 
 Return JSON:
 {{
     "has_hallucination": true/false,
     "confidence": 0.0-1.0,
-    "unsupported_claims": [],
-    "supported_claims": []
+    "supported_claims": ["claim1", "claim2"],
+    "unsupported_claims": ["claim1"],
+    "verification_status": "verified|partially_verified|unverified"
 }}"""
 
         try:
-            async with httpx.AsyncClient(timeout=self.config['ollama'].get('timeout', 120.0)) as client:
-                response = await client.post(
-                    f"{self.ollama_url}/api/generate",
-                    json={
-                        "model": self.model,
-                        "prompt": prompt,
-                        "stream": False,
-                        # "format": "json", # Disabled for Qwen compatibility
-                        "options": {"temperature": 0.1}
-                    }
-                )
-                result = response.json()
-
-                # Validate response is not empty
-                response_text = result.get('response', '').strip()
-                if not response_text:
-                    logger.warning("Empty LLM response for hallucination detection")
-                    return {
-                        "has_hallucination": False,
-                        "confidence": 0.5,
-                        "unsupported_claims": []
-                    }
-
-                try:
-                    return json.loads(response_text)
-                except json.JSONDecodeError as json_err:
-                    logger.warning(f"LLM response not valid JSON for hallucination detection: {json_err}")
-                    return {
-                        "agent": self.name,
-                        "has_hallucination": False,
-                        "confidence": 0.5,
-                        "unsupported_claims": []
-                    }
-
+            fallback = {
+                "has_hallucination": False,
+                "confidence": 0.5,
+                "supported_claims": [],
+                "unsupported_claims": [],
+                "verification_status": "partially_verified"
+            }
+            
+            result = await call_ollama_json(
+                base_url=self.ollama_url,
+                model=self.model,
+                prompt=prompt,
+                max_retries=2,
+                timeout=self.config['ollama'].get('timeout', 120.0),
+                temperature=0.1,
+                fallback_data=fallback,
+                model_type="text",
+                config=self.config
+            )
+            
+            return {
+                "agent": self.name,
+                "has_hallucination": result.get('has_hallucination', False),
+                "confidence": float(result.get('confidence', 0.5)),
+                "supported_claims": result.get('supported_claims', []),
+                "unsupported_claims": result.get('unsupported_claims', []),
+                "verification_status": result.get('verification_status', 'partially_verified')
+            }
+            
         except Exception as e:
             logger.error(f"Hallucination detection failed: {e}")
             return {
                 "has_hallucination": False,
-                "confidence": 0.5,
-                "unsupported_claims": []
+                "confidence": 0.4,
+                "unsupported_claims": [],
+                "verification_status": "check_failed"
             }
+
+    async def evaluate_results(
+        self,
+        query: str,
+        results: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Evaluate quality of search results (original interface, now using Self-RAG).
+        """
+        quality = await self.evaluate_retrieval_quality(query, results)
+        
+        return {
+            "agent": self.name,
+            "quality_score": quality.overall_score,
+            "relevance": quality.relevance_score,
+            "completeness": quality.coverage_score,
+            "diversity": quality.diversity_score,
+            "confidence": quality.confidence,
+            "issues": quality.issues,
+            "strengths": [],
+            "weaknesses": quality.issues,
+            "recommendations": [],
+            "should_reformulate": not quality.is_sufficient,
+            "is_sufficient": quality.is_sufficient
+        }
 
     def calculate_confidence_score(
         self,
         results: List[Dict[str, Any]],
         evaluation: Dict[str, Any]
     ) -> float:
-        """
-        Calculate overall confidence score for results
-
-        Combines multiple signals:
-        - Number of results
-        - Quality scores
-        - Top result score
-        """
+        """Calculate overall confidence score for results"""
         if not results:
             return 0.0
 
-        # Factors
-        num_results_score = min(len(results) / 5.0, 1.0)  # Max at 5 results
+        num_results_score = min(len(results) / 5.0, 1.0)
         quality_score = evaluation.get('quality_score', 0.5)
         top_score = results[0].get('score', 0) if results else 0
 
-        # Weighted combination
         confidence = (
             num_results_score * 0.2 +
             quality_score * 0.4 +
@@ -242,20 +463,9 @@ Return JSON:
         results: List[Dict[str, Any]],
         evaluation: Dict[str, Any]
     ) -> List[str]:
-        """
-        Suggest improvements to search query or strategy
-
-        Args:
-            query: Original query
-            results: Current results
-            evaluation: Quality evaluation
-
-        Returns:
-            List of improvement suggestions
-        """
+        """Suggest improvements to search query or strategy"""
         suggestions = []
 
-        # Based on evaluation
         if evaluation.get('should_reformulate'):
             suggestions.append("Try rephrasing your query with different keywords")
 
@@ -268,11 +478,20 @@ Return JSON:
                 "Check if documents are indexed",
                 "Use different keywords"
             ])
-
         elif len(results) < 3:
             suggestions.append("Limited results found. Try expanding your search")
 
-        # Add evaluation recommendations
         suggestions.extend(evaluation.get('recommendations', []))
+        return suggestions[:5]
 
-        return suggestions[:5]  # Top 5 suggestions
+    def get_agent_info(self) -> Dict[str, str]:
+        """Return agent information for UI display"""
+        return {
+            "name": self.AGENT_NAME,
+            "title": self.AGENT_TITLE,
+            "full_name": self.name,
+            "description": self.AGENT_DESCRIPTION,
+            "icon": self.AGENT_ICON,
+            "role": "critic_self_rag"
+        }
+

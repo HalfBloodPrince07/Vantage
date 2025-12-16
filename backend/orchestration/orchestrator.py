@@ -65,8 +65,16 @@ from backend.agents import (
     CriticAgent
 )
 from backend.agents.document_agents import DaedalusOrchestrator
+from backend.agents.graph_rag_agent import GraphRAGAgent
+from backend.agents.reasoning_planner import ReasoningPlanner
+from backend.agents.adaptive_retriever import AdaptiveRetriever, RetrievalStrategy
+from backend.agents.confidence_scorer import ConfidenceScorer
+from backend.agents.retrieval_controller import RetrievalController
+# PersonalizedRanker disabled for cleaner UX
+# from backend.ranking.personalized_ranker import PersonalizedRanker
+from backend.graph.knowledge_graph import KnowledgeGraph
+from backend.memory import MemoryManager, MemoryTool, EpisodicMemory
 from backend.streaming_steps import emit_step
-from backend.memory import MemoryManager
 from backend.utils.llm_utils import call_ollama_with_retry
 
 
@@ -127,19 +135,50 @@ class EnhancedOrchestrator:
         self.analysis_agent = AnalysisAgent(config)
         self.summarization_agent = SummarizationAgent(config)
         self.explanation_agent = ExplanationAgent(config)
-        self.critic_agent = CriticAgent(config)
+        self.critic_agent = CriticAgent(config)  # Extended with Self-RAG
         
         # === DAEDALUS PATH ===
         self.daedalus = DaedalusOrchestrator(config, opensearch_client)
+        
+        # === ADVANCED RAG AGENTS ===
+        # Apollo - Graph-enhanced retrieval
+        self.knowledge_graph = KnowledgeGraph()
+        self.graph_rag = GraphRAGAgent(config, self.knowledge_graph)
+        
+        # Odysseus - Multi-hop reasoning
+        self.reasoning_planner = ReasoningPlanner(config)
+        
+        # Proteus - Adaptive retrieval strategy
+        self.adaptive_retriever = AdaptiveRetriever(config)
+        
+        # Themis - Confidence scoring
+        self.confidence_scorer = ConfidenceScorer(config)
+        
+        # Sisyphus - Corrective retrieval loops
+        self.retrieval_controller = RetrievalController(
+            config=config,
+            critic_agent=self.critic_agent,
+            search_function=search_function,
+            max_iterations=3,
+            quality_threshold=0.6
+        )
+        
+        # Personalized ranking DISABLED
+        # self.personalized_ranker = PersonalizedRanker()
+        
+        # Agentic memory tools
+        self.memory_tool = MemoryTool(memory_manager)
+        self.episodic_memory = EpisodicMemory()
 
         if LANGGRAPH_AVAILABLE:
             self.workflow = self._build_langgraph_workflow()
         else:
             self.workflow = None
 
-        logger.info(f"⚡ {self.name} initialized")
+        logger.info(f"⚡ {self.name} initialized with Advanced RAG")
         logger.info(f"   ├── Athena Path: Socrates, Aristotle, Thoth, Hermes, Diogenes")
-        logger.info(f"   └── Daedalus Path: Prometheus, Hypatia, Mnemosyne")
+        logger.info(f"   ├── Daedalus Path: Prometheus, Hypatia, Mnemosyne")
+        logger.info(f"   └── Advanced: Apollo, Odysseus, Proteus, Themis, Sisyphus")
 
     def _build_langgraph_workflow(self) -> StateGraph:
         """Build LangGraph workflow for Athena path"""
@@ -368,11 +407,30 @@ class EnhancedOrchestrator:
         logger.info(f"🤖 [{agent}] {action}: {details}")
 
     async def _simple_workflow(self, state: WorkflowState) -> WorkflowState:
+        """
+        Enhanced workflow with:
+        - Odysseus (Multi-hop) for complex queries
+        - Themis (Confidence) scoring for all responses
+        - Episodic memory storage
+        """
         state = await self._load_context_node(state)
         state = await self._classify_node(state)
         intent = state.get("intent", "document_search")
+        query = state.get("query", "")
         
-        if intent == QueryIntent.CLARIFICATION_NEEDED.value:
+        # === Check if complex query needs Odysseus ===
+        complexity = self.reasoning_planner.detect_complexity(query)
+        
+        if complexity == "complex" and intent not in [
+            QueryIntent.CLARIFICATION_NEEDED.value,
+            QueryIntent.GENERAL_KNOWLEDGE.value,
+            QueryIntent.SYSTEM_META.value
+        ]:
+            # Use Odysseus for multi-hop reasoning
+            self._add_step(state, "🧭 Odysseus (The Strategist)", "Analyzing Complexity", 
+                          "Query requires multi-hop reasoning")
+            state = await self._multi_hop_search_node(state)
+        elif intent == QueryIntent.CLARIFICATION_NEEDED.value:
             state = await self._clarify_node(state)
         elif intent in [QueryIntent.GENERAL_KNOWLEDGE.value, QueryIntent.SYSTEM_META.value]:
             state = await self._general_answer_node(state)
@@ -386,10 +444,166 @@ class EnhancedOrchestrator:
             state = await self._document_search_node(state)
             state = await self._explain_node(state)
 
-        if state["results"]:
+        # Quality check if results exist
+        if state.get("results"):
             state = await self._quality_check_node(state)
+        
+        # Generate response
         state = await self._generate_response_node(state)
+        
+        # === Themis - Confidence Scoring ===
+        state = await self._confidence_scoring_node(state)
+        
+        # === Store Episode ===
+        await self._store_episode(state)
+        
         return state
+    
+    async def _multi_hop_search_node(self, state: WorkflowState) -> WorkflowState:
+        """
+        Use Odysseus for multi-hop reasoning on complex queries.
+        Decomposes query, retrieves for each sub-query, synthesizes answer.
+        """
+        try:
+            query = state["query"]
+            
+            # Decompose query
+            self._add_step(state, "🧭 Odysseus (The Strategist)", "Decomposing Query", 
+                          "Breaking into sub-queries")
+            
+            sub_queries = await self.reasoning_planner.decompose_query(query)
+            
+            self._add_step(state, "🧭 Odysseus (The Strategist)", "Sub-queries Created", 
+                          f"{len(sub_queries)} sub-queries identified")
+            
+            # Execute each sub-query
+            all_results = []
+            sub_answers = []
+            
+            for sq in sorted(sub_queries, key=lambda x: x.priority):
+                self._add_step(state, "🔍 Search Agent", f"Sub-query {sq.id}", 
+                              f"Searching: {sq.query[:50]}...")
+                
+                # Perform search for this sub-query
+                prefs = state.get("user_preferences", {})
+                results = await self.search_function(
+                    query=sq.query,
+                    filters=state.get("filters"),
+                    weights=prefs.get("optimal_weights", {}),
+                    user_id=state.get("user_id")
+                )
+                
+                if results:
+                    all_results.extend(results[:3])  # Top 3 per sub-query
+                    # Extract answer snippet from top result
+                    top_content = (results[0].get('detailed_summary', '') or results[0].get('content_summary', ''))[:300]
+                    sub_answers.append({
+                        "id": sq.id,
+                        "query": sq.query,
+                        "answer": top_content,
+                        "sources": results[:3]
+                    })
+            
+            # Synthesize final answer
+            if len(sub_answers) > 1:
+                self._add_step(state, "🧭 Odysseus (The Strategist)", "Synthesizing", 
+                              "Combining sub-answers into final response")
+                
+                synthesized = await self.reasoning_planner.synthesize_answers(query, sub_answers)
+                state["response_message"] = synthesized.answer
+                state["reasoning_trace"] = synthesized.reasoning_trace
+                state["multi_hop_confidence"] = synthesized.confidence
+            
+            # Deduplicate results
+            seen_ids = set()
+            unique_results = []
+            for r in all_results:
+                if r.get('id') not in seen_ids:
+                    seen_ids.add(r.get('id'))
+                    unique_results.append(r)
+            
+            state["results"] = unique_results
+            state["used_multi_hop"] = True
+            
+        except Exception as e:
+            logger.error(f"Multi-hop search failed: {e}")
+            # Fallback to regular search
+            state = await self._document_search_node(state)
+        
+        return state
+    
+    async def _confidence_scoring_node(self, state: WorkflowState) -> WorkflowState:
+        """
+        Use Themis to score confidence and generate follow-ups.
+        """
+        try:
+            response = state.get("response_message", "")
+            query = state.get("query", "")
+            results = state.get("results", [])
+            
+            if not response:
+                return state
+            
+            self._add_step(state, "⚖️ Themis (The Just)", "Scoring Confidence", 
+                          "Assessing answer certainty")
+            
+            # Get confidence score
+            confidence = await self.confidence_scorer.score_answer_confidence(
+                answer=response,
+                query=query,
+                sources=results,
+                retrieval_quality=state.get("quality_evaluation")
+            )
+            
+            state["confidence"] = confidence
+            
+            # Generate follow-ups if confidence is good
+            if confidence > 0.4 and results:
+                try:
+                    followups = await self.confidence_scorer.suggest_followups(
+                        query=query,
+                        answer=response,
+                        sources=results
+                    )
+                    state["suggested_followups"] = followups
+                except Exception:
+                    pass
+            
+            confidence_label = "High" if confidence >= 0.8 else "Medium" if confidence >= 0.5 else "Low"
+            self._add_step(state, "⚖️ Themis (The Just)", "Confidence Scored", 
+                          f"{confidence_label} ({confidence:.0%})")
+            
+        except Exception as e:
+            logger.warning(f"Confidence scoring failed: {e}")
+        
+        return state
+    
+    async def _store_episode(self, state: WorkflowState):
+        """Store this interaction as an episode for learning."""
+        try:
+            from backend.memory import Episode
+            
+            episode = Episode(
+                episode_id=f"ep_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                user_id=state.get("user_id", "anonymous"),
+                session_id=state.get("session_id", ""),
+                query=state.get("query", ""),
+                intent=state.get("intent", "unknown"),
+                response=state.get("response_message", ""),
+                results=state.get("results", []),
+                confidence=state.get("confidence", 0.5),
+                search_strategy=state.get("search_strategy", "hybrid"),
+                used_multi_hop=state.get("used_multi_hop", False),
+                expanded_entities=state.get("expanded_entities", []),
+                thinking_steps=state.get("steps", []),
+                timestamp=datetime.now().isoformat()
+            )
+            
+            self.episodic_memory.store_episode(episode)
+            
+        except Exception as e:
+            logger.debug(f"Episode storage skipped: {e}")
+
 
     async def _load_context_node(self, state: WorkflowState) -> WorkflowState:
         try:
@@ -418,24 +632,106 @@ class EnhancedOrchestrator:
         return state
 
     async def _document_search_node(self, state: WorkflowState) -> WorkflowState:
+        """
+        Enhanced document search with:
+        - Proteus (Adaptive Retrieval) - strategy selection
+        - Apollo (Graph RAG) - entity-based expansion
+        - Personalized ranking based on user feedback
+        """
         try:
             import time
             search_start = time.time()
-            self._add_step(state, "🔍 Search Agent", "Searching", "Performing hybrid vector + keyword search")
+            
+            query = state["query"]
+            entities = state.get("entities", [])
+            user_id = state.get("user_id")
+            
+            # === STEP 1: Proteus - Adaptive Strategy Selection ===
+            self._add_step(state, "🔮 Proteus (The Shape-Shifter)", "Analyzing Query", 
+                          "Determining optimal retrieval strategy")
+            
+            strategy_decision = self.adaptive_retriever.classify_strategy(query)
+            strategy = strategy_decision.primary_strategy
+            strategy_params = self.adaptive_retriever.get_strategy_params(strategy)
+            
+            self._add_step(state, "🔮 Proteus (The Shape-Shifter)", "Strategy Selected", 
+                          f"{strategy.value} ({strategy_decision.reasoning})")
+            
+            # === STEP 2: Apollo - Graph Expansion (if entities detected) ===
+            expanded_entities = []
+            related_docs = []
+            
+            if entities and strategy_params.get("use_graph", False):
+                self._add_step(state, "🌐 Apollo (The Illuminated)", "Expanding Query", 
+                              f"Graph traversal for {len(entities)} entities")
+                try:
+                    expansion = await self.graph_rag.expand_query(
+                        query=query,
+                        extracted_entities=entities,
+                        max_hops=strategy_params.get("expand_hops", 2)
+                    )
+                    expanded_entities = expansion.expanded_entities
+                    related_docs = expansion.related_documents[:5]
+                    
+                    if expanded_entities:
+                        self._add_step(state, "🌐 Apollo (The Illuminated)", "Entities Expanded", 
+                                      f"Found {len(expanded_entities)} related entities")
+                except Exception as e:
+                    logger.warning(f"Graph expansion failed: {e}")
+            
+            # === STEP 3: Perform Search ===
+            self._add_step(state, "🔍 Search Agent", "Searching", 
+                          f"Using {strategy.value} strategy with hybrid search")
+            
             prefs = state.get("user_preferences", {})
+            
+            # Merge strategy weights with user preferences
+            search_weights = {
+                "bm25_weight": strategy_params.get("bm25_weight", 0.5),
+                "vector_weight": strategy_params.get("vector_weight", 0.5),
+                **prefs.get("optimal_weights", {})
+            }
+            
             results = await self.search_function(
-                query=state["query"], 
+                query=query, 
                 filters=state.get("filters"),
-                weights=prefs.get("optimal_weights", {}),
-                user_id=state.get("user_id")  # Pass user_id for feedback boosts
+                weights=search_weights,
+                user_id=user_id
             )
+            
             if results is None:
                 results = []
+            
+            # === STEP 4: Add graph-related documents ===
+            if related_docs and results:
+                # Prepend graph-related docs that aren't already in results
+                existing_ids = {r.get('id') for r in results}
+                for doc_id in related_docs:
+                    if doc_id not in existing_ids:
+                        # Fetch the document
+                        try:
+                            if self.opensearch_client:
+                                doc = await self.opensearch_client.get_document(doc_id)
+                                if doc:
+                                    doc['score'] = 0.7  # Graph-related boost
+                                    doc['source'] = 'graph_expansion'
+                                    results.append(doc)
+                        except Exception:
+                            pass
+            
+            # === PersonalizedRanker DISABLED (removed for cleaner UX) ===
+            # If needed in future, personalization can be re-enabled here
+            
             state["results"] = results
             state["search_time"] = round(time.time() - search_start, 3)
-            self._add_step(state, "🔍 Search Agent", "Results Found", f"{len(results)} documents retrieved")
+            state["search_strategy"] = strategy.value
+            state["expanded_entities"] = expanded_entities
+            
+            self._add_step(state, "🔍 Search Agent", "Results Found", 
+                          f"{len(results)} documents retrieved")
+            
         except Exception as e:
-            logger.error(f"Search failed: {e}")
+            logger.error(f"Enhanced search failed: {e}")
             state["error"] = str(e)
             state["results"] = []
         return state

@@ -407,7 +407,7 @@ Respond in JSON format:
                 "filename": result.get('filename', 'Unknown'),
                 "file_path": result.get('file_path', ''),
                 "score": round(result.get('score', 0), 3),
-                "summary": result.get('content_summary', 'No summary available'),
+                "summary": result.get('detailed_summary', '') or result.get('content_summary', 'No summary available'),
                 "document_type": result.get('document_type', 'document'),
                 "relevance_explanation": self._explain_relevance(query, result)
             })
@@ -424,7 +424,7 @@ Respond in JSON format:
     
     def _explain_relevance(self, query: str, result: Dict) -> str:
         """Generate a brief explanation of why this result is relevant"""
-        summary = result.get('content_summary', '').lower()
+        summary = (result.get('detailed_summary', '') or result.get('content_summary', '')).lower()
         query_terms = set(query.lower().split())
         
         matching_terms = [term for term in query_terms if term in summary]

@@ -121,7 +121,7 @@ chmod +x run.sh
 **Terminal 1 - Backend:**
 ```bash
 cd LocaLense_V2
-python -m backend.api
+uvicorn backend.api:app --reload --host 0.0.0.0 --port 8000
 ```
 
 You should see:

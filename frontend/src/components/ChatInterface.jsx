@@ -1,8 +1,10 @@
 // Enhanced ChatInterface with grid view, image previews, and performance optimizations
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
 import ChatSidebar from './ChatSidebar';
 import DocumentSelector from './DocumentSelector';
 import SettingsPanel from './SettingsPanel';
+import EntityGraphModal from './EntityGraphModal';
 import './ChatInterface.css';
 
 // Helper functions
@@ -33,7 +35,7 @@ const isImageFile = (filePath) => {
 };
 
 // Extracted Components
-const ResultCard = React.memo(({ result, onImageClick, onAttach, onOpen, query, userId }) => {
+const ResultCard = React.memo(({ result, onImageClick, onAttach, onOpen, onViewGraph, query, userId }) => {
     const isImage = isImageFile(result.file_path);
     const score = result.score != null ? (result.score * 100).toFixed(0) : null;
     const summary = result.detailed_summary || result.content_summary || result.text || '';
@@ -113,6 +115,13 @@ const ResultCard = React.memo(({ result, onImageClick, onAttach, onOpen, query, 
                 </div>
                 <div className="result-actions">
                     <button
+                        className="result-action-btn graph"
+                        onClick={() => onViewGraph(result.id, result.filename)}
+                        title="View Knowledge Graph"
+                    >
+                        📊 Graph
+                    </button>
+                    <button
                         className="result-action-btn attach"
                         onClick={() => onAttach(result.id, result.filename)}
                         title="Attach to conversation"
@@ -152,7 +161,7 @@ const ResultCard = React.memo(({ result, onImageClick, onAttach, onOpen, query, 
     );
 });
 
-const ResultItem = React.memo(({ result, onAttach, onOpen, query, userId }) => {
+const ResultItem = React.memo(({ result, onAttach, onOpen, onViewGraph, query, userId }) => {
     const score = result.score != null ? (result.score * 100).toFixed(0) : null;
     const summary = result.detailed_summary || result.content_summary || result.text || '';
     const summaryPreview = summary.substring(0, 300) + (summary.length > 300 ? '...' : '');
@@ -206,6 +215,13 @@ const ResultItem = React.memo(({ result, onAttach, onOpen, query, userId }) => {
             </div>
             <div className="result-actions">
                 <button
+                    className="result-action-btn graph"
+                    onClick={() => onViewGraph(result.id, result.filename)}
+                    title="View Knowledge Graph"
+                >
+                    📊 Graph
+                </button>
+                <button
                     className="result-action-btn attach"
                     onClick={() => onAttach(result.id, result.filename)}
                     title="Attach to conversation"
@@ -244,8 +260,18 @@ const ResultItem = React.memo(({ result, onAttach, onOpen, query, userId }) => {
     );
 });
 
-const Message = React.memo(({ message, viewMode, onViewModeChange, onImageClick, onAttach, onOpen, query, userId }) => {
+const Message = React.memo(({ message, viewMode, onViewModeChange, onImageClick, onAttach, onOpen, onViewGraph, query, userId, onFollowUp }) => {
     const isUser = message.role === 'user';
+
+    // Get confidence level styling
+    const getConfidenceStyle = (confidence) => {
+        if (!confidence && confidence !== 0) return null;
+        if (confidence >= 0.8) return { color: '#22c55e', label: 'High', icon: '✓' };
+        if (confidence >= 0.5) return { color: '#f59e0b', label: 'Medium', icon: '~' };
+        return { color: '#ef4444', label: 'Low', icon: '?' };
+    };
+
+    const confidenceStyle = !isUser ? getConfidenceStyle(message.confidence) : null;
 
     return (
         <div className={`message ${isUser ? 'user-message' : 'assistant-message'}`}>
@@ -253,12 +279,72 @@ const Message = React.memo(({ message, viewMode, onViewModeChange, onImageClick,
                 {isUser ? '👤' : '🤖'}
             </div>
             <div className="message-content">
-                <div className="message-text">{message.content}</div>
+                <div className="message-text">
+                    {isUser ? (
+                        message.content
+                    ) : (
+                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                    )}
+                </div>
+
+                {/* Confidence Indicator */}
+                {!isUser && confidenceStyle && (
+                    <div className="confidence-indicator" style={{ borderColor: confidenceStyle.color }}>
+                        <span className="confidence-icon" style={{ color: confidenceStyle.color }}>
+                            {confidenceStyle.icon}
+                        </span>
+                        <span className="confidence-label">
+                            Confidence: {confidenceStyle.label} ({(message.confidence * 100).toFixed(0)}%)
+                        </span>
+                    </div>
+                )}
 
                 {/* Document Mode Indicator */}
                 {!isUser && message.document_mode && (
                     <div className="document-mode-badge">
                         🏛️ Document Chat Mode (Daedalus)
+                    </div>
+                )}
+
+                {/* Evidence Strength Indicator */}
+                {!isUser && message.evidence_strength && (
+                    <div className={`evidence-badge evidence-${message.evidence_strength.level || 'unknown'}`}>
+                        {message.evidence_strength.level === 'strong' && '💪 Strong Evidence'}
+                        {message.evidence_strength.level === 'moderate' && '📊 Moderate Evidence'}
+                        {message.evidence_strength.level === 'weak' && '⚠️ Weak Evidence'}
+                        {message.evidence_strength.level === 'none' && '❓ No Direct Evidence'}
+                        {message.evidence_strength.supporting_sources > 0 &&
+                            <span className="evidence-sources"> ({message.evidence_strength.supporting_sources} sources)</span>}
+                    </div>
+                )}
+
+                {/* Alternative Interpretations (shown when confidence is low) */}
+                {!isUser && message.alternative_interpretations && message.alternative_interpretations.length > 0 && (
+                    <div className="alternative-interpretations">
+                        <span className="alt-label">🤔 Did you mean:</span>
+                        <ul className="alt-list">
+                            {message.alternative_interpretations.slice(0, 3).map((alt, idx) => (
+                                <li key={idx} className="alt-item">{alt}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                {/* Follow-up Suggestions */}
+                {!isUser && message.suggested_followups && message.suggested_followups.length > 0 && (
+                    <div className="followup-suggestions">
+                        <span className="followup-label">💡 You might also ask:</span>
+                        <div className="followup-list">
+                            {message.suggested_followups.slice(0, 3).map((suggestion, idx) => (
+                                <button
+                                    key={idx}
+                                    className="followup-btn"
+                                    onClick={() => onFollowUp && onFollowUp(suggestion)}
+                                >
+                                    {suggestion}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 )}
 
@@ -293,6 +379,7 @@ const Message = React.memo(({ message, viewMode, onViewModeChange, onImageClick,
                                         onImageClick={onImageClick}
                                         onAttach={onAttach}
                                         onOpen={onOpen}
+                                        onViewGraph={onViewGraph}
                                         query={query || message.query}
                                         userId={userId}
                                     />
@@ -306,6 +393,7 @@ const Message = React.memo(({ message, viewMode, onViewModeChange, onImageClick,
                                         result={result}
                                         onAttach={onAttach}
                                         onOpen={onOpen}
+                                        onViewGraph={onViewGraph}
                                         query={query || message.query}
                                         userId={userId}
                                     />
@@ -334,6 +422,7 @@ const ChatInterface = ({ userId = 'user_1', onLogout, onIndexingStart }) => {
     const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
     const [lightboxImage, setLightboxImage] = useState(null);
     const [attachedDocuments, setAttachedDocuments] = useState([]); // Track attached documents
+    const [graphModal, setGraphModal] = useState({ isOpen: false, documentId: null, documentName: '' }); // Graph modal state
 
     const sidebarRef = useRef(null);
     const documentSelectorRef = useRef(null);
@@ -363,6 +452,14 @@ const ChatInterface = ({ userId = 'user_1', onLogout, onIndexingStart }) => {
         if (documentSelectorRef.current?.attachDocument) {
             documentSelectorRef.current.attachDocument(docId, filename);
         }
+    }, []);
+
+    const handleViewGraph = useCallback((docId, filename) => {
+        setGraphModal({ isOpen: true, documentId: docId, documentName: filename });
+    }, []);
+
+    const handleCloseGraph = useCallback(() => {
+        setGraphModal({ isOpen: false, documentId: null, documentName: '' });
     }, []);
 
     const handleLogout = useCallback(() => {
@@ -488,8 +585,13 @@ const ChatInterface = ({ userId = 'user_1', onLogout, onIndexingStart }) => {
                 content: result.response_message || 'Search completed.',
                 results: result.results || [],
                 timestamp: new Date().toISOString(),
-                document_mode: result.document_mode || false, // Track if Daedalus was used
-                agents_used: result.agents_used || []
+                document_mode: result.document_mode || false,
+                agents_used: result.agents_used || [],
+                confidence: result.confidence,
+                suggested_followups: result.suggested_followups || [],
+                evidence_strength: result.evidence_strength || null,
+                alternative_interpretations: result.alternative_interpretations || [],
+                query: searchQuery
             };
             setMessages(prev => [...prev, assistantMessage]);
 
@@ -560,6 +662,7 @@ const ChatInterface = ({ userId = 'user_1', onLogout, onIndexingStart }) => {
                                 onImageClick={setLightboxImage}
                                 onAttach={handleAttachDocument}
                                 onOpen={handleDocumentClick}
+                                onViewGraph={handleViewGraph}
                                 userId={userId}
                             />
                         ))}
@@ -643,6 +746,13 @@ const ChatInterface = ({ userId = 'user_1', onLogout, onIndexingStart }) => {
                     </div>
                 </div>
             )}
+
+            <EntityGraphModal
+                isOpen={graphModal.isOpen}
+                documentId={graphModal.documentId}
+                documentName={graphModal.documentName}
+                onClose={handleCloseGraph}
+            />
         </>
     );
 };

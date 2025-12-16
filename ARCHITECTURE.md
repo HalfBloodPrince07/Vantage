@@ -1,445 +1,435 @@
-# Vantage Architecture Guide 🏛️
+# 🏗️ System Architecture
 
-Comprehensive technical documentation of Vantage's multi-agent AI architecture.
+> Technical deep-dive into Vantage's multi-agent RAG architecture
 
 ---
 
 ## Table of Contents
 
-1. [System Overview](#system-overview)
-2. [Agent Architecture](#agent-architecture)
-3. [Data Flow](#data-flow)
-4. [Technology Stack](#technology-stack)
-5. [API Reference](#api-reference)
-6. [Database Schema](#database-schema)
-7. [Configuration](#configuration)
+1. [High-Level Architecture](#high-level-architecture)
+2. [Agent System](#agent-system)
+3. [Search Pipeline](#search-pipeline)
+4. [Document Ingestion Pipeline](#document-ingestion-pipeline)
+5. [Knowledge Graph](#knowledge-graph)
+6. [Memory System](#memory-system)
+7. [Data Flow Diagrams](#data-flow-diagrams)
+8. [Technology Stack](#technology-stack)
 
 ---
 
-## System Overview
-
-Vantage is built on a **multi-agent architecture** inspired by the Greek Pantheon. Each agent has a specialized role, and they collaborate through the **Zeus orchestrator** to process user queries.
-
-### High-Level Architecture
+## High-Level Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           FRONTEND (React + Vite)                       │
-│   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                  │
-│   │  Auth Pages  │  │ Chat Interface│  │ Index Panel  │                 │
-│   └──────────────┘  └──────────────┘  └──────────────┘                  │
-└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              USER INTERFACE                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │                        React Frontend (Vite)                            ││
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌────────────────┐ ││
+│  │  │ChatInterface │ │DocumentSel. │ │EntityGraph   │ │SettingsPanel  │ ││
+│  │  │  - Messages  │ │  - Attach   │ │  - Canvas    │ │ - Indexing    │ ││
+│  │  │  - Results   │ │  - Browse   │ │  - Nodes     │ │ - Config      │ ││
+│  │  │  - Steps     │ │             │ │  - Edges     │ │               │ ││
+│  │  └──────────────┘ └──────────────┘ └──────────────┘ └────────────────┘ ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────────────┘
                                     │
-                                    │ HTTP / SSE
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           BACKEND (FastAPI)                             │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                    ZEUS ORCHESTRATOR (⚡)                        │  │
-│  │    ┌─────────────────────┐    ┌─────────────────────────────┐   │   │
-│  │    │    ATHENA PATH      │    │      DAEDALUS PATH          │   │   │
-│  │    │   (No documents)    │    │   (Documents attached)      │   │   │
-│  │    │                     │    │                             │   │   │
-│  │    │  🦉 Athena          │    │  🏛️ Daedalus                │   │   │
-│  │    │  📊 Aristotle       │    │  🔥 Prometheus              │   │   │
-│  │    │  🤔 Socrates        │    │  📚 Hypatia                 │   │   │
-│  │    │  📜 Thoth           │    │  🧠 Mnemosyne               │   │   │
-│  │    │  📨 Hermes          │    │                             │   │   │
-│  │    │  🔎 Diogenes        │    │                             │   │   │
-│  │    └─────────────────────┘    └─────────────────────────────┘   │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                                    │                                    │
-│           ┌────────────────────────┼────────────────────────┐          │
-│           ▼                        ▼                        ▼          │
-│  ┌──────────────┐      ┌───────────────────┐     ┌──────────────┐     │
-│  │    Ollama    │      │    OpenSearch     │     │    SQLite    │     │
-│  │  (LLM + Emb) │      │  (Vector + BM25)  │     │  (Storage)   │     │
-│  └──────────────┘      └───────────────────┘     └──────────────┘     │
-└─────────────────────────────────────────────────────────────────────────┘
+                          HTTP REST + SSE (Real-time Steps)
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           API LAYER (FastAPI)                                │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                         backend/api.py                                 │  │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐  │  │
+│  │  │/search       │ │/documents    │ │/index        │ │/conversations│  │  │
+│  │  │/enhanced     │ │/{id}/entities│ │/start        │ │              │  │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        ORCHESTRATION LAYER                                   │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │              EnhancedOrchestrator (Zeus - The Conductor)              │  │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │  │
+│  │  │                      LangGraph Workflow                          │  │  │
+│  │  │  classify → load_context → document_search → explain → finalize │  │  │
+│  │  └─────────────────────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │                         AGENT ARMIES                                    ││
+│  │                                                                         ││
+│  │  ┌─ ATHENA PATH ─────────────────────────────────────────────────────┐ ││
+│  │  │ QueryClassifier → AdaptiveRetriever → HybridSearch → Reranker    │ ││
+│  │  │        ↓                  ↓                            ↓          │ ││
+│  │  │  (Intent)          (Strategy)                    (Precision)      │ ││
+│  │  └───────────────────────────────────────────────────────────────────┘ ││
+│  │                                                                         ││
+│  │  ┌─ DAEDALUS PATH ───────────────────────────────────────────────────┐ ││
+│  │  │ Prometheus → Hypatia → Mnemosyne → Daedalus                       │ ││
+│  │  │ (Extract)  (Analyze)  (Remember)  (Orchestrate)                   │ ││
+│  │  └───────────────────────────────────────────────────────────────────┘ ││
+│  │                                                                         ││
+│  │  ┌─ QUALITY AGENTS ──────────────────────────────────────────────────┐ ││
+│  │  │ Diogenes (Critic) + Themis (Confidence) + Hermes (Explain)        │ ││
+│  │  └───────────────────────────────────────────────────────────────────┘ ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DATA LAYER                                         │
+│  ┌───────────────────┐ ┌───────────────────┐ ┌───────────────────────────┐  │
+│  │    OpenSearch     │ │      SQLite       │ │        Ollama             │  │
+│  │  ┌─────────────┐  │ │  ┌─────────────┐  │ │  ┌─────────────────────┐  │  │
+│  │  │ Vector Index│  │ │  │conversations│  │ │  │ qwen2.5:7b (Text)  │  │  │
+│  │  │ (k-NN HNSW) │  │ │  │ episodes    │  │ │  │ llava:7b (Vision)  │  │  │
+│  │  │             │  │ │  │ users       │  │ │  └─────────────────────┘  │  │
+│  │  │ BM25 Index  │  │ │  │ feedback    │  │ │                           │  │
+│  │  └─────────────┘  │ │  │ graph       │  │ │  ┌─────────────────────┐  │  │
+│  └───────────────────┘ │  └─────────────┘  │ │  │ Sentence-Transformers│ │  │
+│                        └───────────────────┘ │  │ (nomic-embed-text)  │  │  │
+│                                              │  └─────────────────────┘  │  │
+│                                              └───────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Agent Architecture
+## Agent System
 
-### The Greek Pantheon
-
-Vantage uses a mythology-inspired naming convention for its AI agents:
-
-| Agent | Icon | Greek Name | Title | Role |
-|-------|------|------------|-------|------|
-| Main Orchestrator | ⚡ | **Zeus** | The Conductor | Routes all queries to appropriate agents |
-| Intent Classifier | 🦉 | **Athena** | The Strategist | Classifies query intent and extracts entities |
-| Document Orchestrator | 🏛️ | **Daedalus** | The Architect | Handles document-attached queries |
-| Text Extractor | 🔥 | **Prometheus** | The Illuminator | Extracts text from attached documents |
-| Semantic Analyzer | 📚 | **Hypatia** | The Scholar | Performs semantic analysis of documents |
-| Insight Extractor | 🧠 | **Mnemosyne** | The Keeper | Extracts key insights and facts |
-| Analysis Agent | 📊 | **Aristotle** | The Analyst | Compares and analyzes multiple documents |
-| Clarification Agent | 🤔 | **Socrates** | The Inquirer | Generates clarifying questions |
-| Summarization Agent | 📜 | **Thoth** | The Scribe | Creates multi-document summaries |
-| Explanation Agent | 📨 | **Hermes** | The Messenger | Explains search result rankings |
-| Quality Control | 🔎 | **Diogenes** | The Critic | Evaluates response quality |
-
-### Routing Logic
+### Agent Hierarchy
 
 ```
-USER QUERY
+                            ⚡ ZEUS (Conductor)
+                          EnhancedOrchestrator
+                                  │
+          ┌───────────────────────┼───────────────────────┐
+          │                       │                       │
+    ┌─────▼─────┐          ┌──────▼──────┐         ┌──────▼──────┐
+    │  ATHENA   │          │  DAEDALUS   │         │   APOLLO    │
+    │ (Strategy)│          │ (Documents) │         │   (Graph)   │
+    └─────┬─────┘          └──────┬──────┘         └──────┬──────┘
+          │                       │                       │
+    ┌─────▼─────┐          ┌──────▼──────┐         ┌──────▼──────┐
+    │  PROTEUS  │          │ PROMETHEUS  │         │ Knowledge   │
+    │(Retrieval)│          │  (Extract)  │         │   Graph     │
+    └─────┬─────┘          └──────┬──────┘         └─────────────┘
+          │                       │
+    ┌─────▼─────┐          ┌──────▼──────┐
+    │ SISYPHUS  │          │  HYPATIA    │
+    │(Iterative)│          │  (Analyze)  │
+    └─────┬─────┘          └──────┬──────┘
+          │                       │
+    ┌─────▼─────┐          ┌──────▼──────┐
+    │ DIOGENES  │          │ MNEMOSYNE   │
+    │ (Critic)  │          │ (Remember)  │
+    └─────┬─────┘          └─────────────┘
+          │
+    ┌─────▼─────┐
+    │  HERMES   │
+    │ (Explain) │
+    └─────┬─────┘
+          │
+    ┌─────▼─────┐
+    │  THEMIS   │
+    │(Confidence│
+    └───────────┘
+```
+
+### Agent Descriptions
+
+| Agent | Greek Name | Role | File |
+|-------|------------|------|------|
+| **Zeus** | Conductor | Master orchestrator, routes queries | `orchestrator.py` |
+| **Athena** | Strategist | Intent classification, query understanding | `query_classifier.py` |
+| **Proteus** | Shape-Shifter | Adaptive retrieval strategy selection | `adaptive_retriever.py` |
+| **Apollo** | Illuminator | Knowledge graph expansion | `graph_rag_agent.py` |
+| **Odysseus** | Voyager | Multi-hop reasoning | `reasoning_planner.py` |
+| **Hermes** | Messenger | Result explanation | `explanation_agent.py` |
+| **Diogenes** | Critic | Quality evaluation | `critic_agent.py` |
+| **Themis** | Arbiter | Confidence scoring | `confidence_scorer.py` |
+| **Sisyphus** | Controller | Iterative retrieval with correction | `retrieval_controller.py` |
+| **Daedalus** | Architect | Document-specific orchestration | `document_agents/` |
+| **Aristotle** | Analyst | Deep analysis | `analysis_agent.py` |
+
+---
+
+## Search Pipeline
+
+### Query Processing Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant Z as Zeus (Orchestrator)
+    participant A as Athena (Classifier)
+    participant P as Proteus (Strategy)
+    participant O as OpenSearch
+    participant R as Reranker
+    participant D as Diogenes (Critic)
+    participant H as Hermes (Explain)
+    participant T as Themis (Confidence)
+
+    U->>Z: Submit Query
+    Z->>A: Classify Intent
+    A-->>Z: Intent + Confidence
+    Z->>P: Select Strategy
+    P-->>Z: Strategy (precise/broad/hybrid)
+    Z->>O: Hybrid Search (Vector + BM25)
+    O-->>Z: Raw Results
+    Z->>R: Cross-Encoder Rerank
+    R-->>Z: Reranked Results
+    Z->>D: Evaluate Quality
+    D-->>Z: Quality Score
+    Z->>H: Generate Explanations
+    H-->>Z: Result Explanations
+    Z->>T: Score Confidence
+    T-->>Z: Final Confidence
+    Z-->>U: Response + Results + Steps
+```
+
+### Retrieval Strategies
+
+| Strategy | When Used | Vector Weight | BM25 Weight |
+|----------|-----------|---------------|-------------|
+| **Precise** | Specific keywords, entity names | 0.4 | 0.6 |
+| **Broad** | Exploratory, conceptual queries | 0.7 | 0.3 |
+| **Hybrid** | Default balanced | 0.5 | 0.5 |
+| **Semantic** | Abstract concepts | 0.8 | 0.2 |
+
+---
+
+## Document Ingestion Pipeline
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    INGESTION PIPELINE                            │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │  File Discovery   │
+                    │  (Watcher/Manual) │
+                    └─────────┬─────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │ Content Extraction│
+                    │ PDF→Text, DOCX→   │
+                    │ Text, Image→OCR   │
+                    └─────────┬─────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │   LLM Summary     │
+                    │ + Keywords        │
+                    │ + Entities        │
+                    └─────────┬─────────┘
+                              │
+               ┌──────────────┼──────────────┐
+               │              │              │
+     ┌─────────▼─────────┐    │    ┌─────────▼─────────┐
+     │  Vector Embedding │    │    │  Knowledge Graph  │
+     │ (nomic-embed-text)│    │    │  (Entity Store)   │
+     └─────────┬─────────┘    │    └─────────┬─────────┘
+               │              │              │
+               └──────────────▼──────────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │   OpenSearch      │
+                    │   Index Document  │
+                    └───────────────────┘
+```
+
+### Supported File Types
+
+| Type | Extension | Extraction Method |
+|------|-----------|-------------------|
+| PDF | `.pdf` | PyPDF2 text extraction |
+| Word | `.docx` | python-docx |
+| Text | `.txt`, `.md` | Direct read |
+| Excel | `.xlsx`, `.csv` | Pandas DataFrame |
+| Image | `.png`, `.jpg` | Ollama Vision (llava) |
+
+---
+
+## Knowledge Graph
+
+### Entity Model
+
+```python
+@dataclass
+class Entity:
+    id: str              # Unique identifier
+    name: str            # Entity name
+    entity_type: str     # PERSON, ORG, LOCATION, etc.
+    properties: Dict     # Additional metadata
+    document_ids: List   # Documents mentioning entity
+```
+
+### Relationship Model
+
+```python
+@dataclass
+class Relationship:
+    source_id: str           # Source entity
+    target_id: str           # Target entity
+    relationship_type: str   # WORKS_FOR, LOCATED_IN, etc.
+    weight: float           # Relationship strength
+    document_id: str        # Source document
+```
+
+### Graph Storage
+
+- **Runtime**: NetworkX DiGraph
+- **Persistence**: SQLite (`locallens_graph.db`)
+- **Queries**: Multi-hop traversal for entity expansion
+
+---
+
+## Memory System
+
+### Memory Types
+
+| Type | Purpose | Storage | Lifespan |
+|------|---------|---------|----------|
+| **Session** | Current conversation context | In-memory | Session |
+| **Episodic** | Important interactions | SQLite | Permanent |
+| **Feedback** | User result ratings | SQLite | 30 days decay |
+
+### Memory Manager
+
+```python
+class MemoryManager:
+    - record_interaction(query, response, context)
+    - get_session_context(session_id)
+    - get_relevant_memories(query, limit)
+    - summarize_history(messages)
+```
+
+---
+
+## Data Flow Diagrams
+
+### Search Request Flow
+
+```
+User Query
     │
     ▼
-┌──────────────────────────────────────────────────┐
-│     ⚡ ZEUS (The Conductor)                       │
-│     Entry point for ALL queries                  │
-└──────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│ POST /search/enhanced                                          │
+│ {query, user_id, conversation_id, attached_documents}         │
+└───────────────────────────────────────────────────────────────┘
     │
-    ├─── attached_documents.length > 0? ────────────┐
-    │              │                                 │
-    │              NO                               YES
-    │              ▼                                 ▼
-    │   ┌────────────────────────────┐   ┌────────────────────────────┐
-    │   │   _route_to_athena()       │   │   _route_to_daedalus()     │
-    │   │                            │   │                            │
-    │   │   1. Load memory context   │   │   1. Fetch document data   │
-    │   │   2. Athena classifies     │   │   2. Prometheus extracts   │
-    │   │   3. Route by intent       │   │   3. Hypatia analyzes      │
-    │   │   4. Quality check         │   │   4. Mnemosyne insights    │
-    │   │   5. Generate response     │   │   5. Generate answer       │
-    │   └────────────────────────────┘   └────────────────────────────┘
-```
-
-### Agent Files
-
-| Agent | File Path |
-|-------|-----------|
-| Zeus | `backend/orchestration/orchestrator.py` |
-| Athena | `backend/agents/query_classifier.py` |
-| Daedalus | `backend/agents/document_agents/daedalus_orchestrator.py` |
-| Prometheus | `backend/agents/document_agents/prometheus_reader.py` |
-| Hypatia | `backend/agents/document_agents/hypatia_analyzer.py` |
-| Mnemosyne | `backend/agents/document_agents/mnemosyne_extractor.py` |
-| Aristotle | `backend/agents/analysis_agent.py` |
-| Socrates | `backend/agents/clarification_agent.py` |
-| Thoth | `backend/agents/summarization_agent.py` |
-| Hermes | `backend/agents/explanation_agent.py` |
-| Diogenes | `backend/agents/critic_agent.py` |
-
----
-
-## Data Flow
-
-### Query Processing (Athena Path)
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant Z as Zeus
-    participant A as Athena
-    participant S as Search
-    participant H as Hermes
-    participant D as Diogenes
-    
-    U->>Z: Query (no documents)
-    Z->>A: Classify intent
-    A->>Z: Intent: DOCUMENT_SEARCH
-    Z->>S: Hybrid search
-    S->>Z: Search results
-    Z->>H: Explain rankings
-    H->>Z: Explanations
-    Z->>D: Quality check
-    D->>Z: Quality score
-    Z->>U: Final response
-```
-
-### Query Processing (Daedalus Path)
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant Z as Zeus
-    participant D as Daedalus
-    participant P as Prometheus
-    participant Hy as Hypatia
-    participant M as Mnemosyne
-    
-    U->>Z: Query + attached doc
-    Z->>D: Route to Daedalus
-    D->>P: Extract text
-    P->>D: Raw text content
-    D->>Hy: Semantic analysis
-    Hy->>D: Document analysis
-    D->>M: Extract insights
-    M->>D: Key insights
-    D->>Z: Answer + sources
-    Z->>U: Final response
-```
-
-### Document Indexing
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant API as FastAPI
-    participant I as Ingestion
-    participant E as Embeddings
-    participant OS as OpenSearch
-    
-    U->>API: Index folder path
-    API->>I: Process documents
-    loop For each document
-        I->>I: Extract text (PDF/DOCX/etc)
-        I->>I: Chunk text
-        I->>E: Generate embeddings
-        E->>I: 768-dim vectors
-        I->>OS: Store document + vector
-    end
-    I->>API: Progress updates
-    API->>U: SSE stream
+    ▼
+┌───────────────────────────────────────────────────────────────┐
+│ EnhancedOrchestrator.process()                                 │
+│   ├── Load session context from MemoryManager                  │
+│   ├── Check for attached documents → Daedalus Path            │
+│   └── No attachments → Athena Path                            │
+└───────────────────────────────────────────────────────────────┘
+    │
+    ▼ (Athena Path)
+┌───────────────────────────────────────────────────────────────┐
+│ QueryClassifier.classify()                                     │
+│   ├── Rule-based classification                                │
+│   └── LLM-based classification (if ambiguous)                 │
+│   Returns: {intent, confidence, entities}                      │
+└───────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────────────────────────────┐
+│ AdaptiveRetriever.select_strategy()                            │
+│   ├── Analyze query characteristics                            │
+│   └── Select: precise | broad | hybrid | semantic             │
+└───────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────────────────────────────┐
+│ OpenSearchClient.hybrid_search()                               │
+│   ├── Vector search (k-NN)                                     │
+│   ├── BM25 text search                                         │
+│   └── Reciprocal Rank Fusion                                   │
+└───────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────────────────────────────┐
+│ CrossEncoderReranker.rerank()                                  │
+│   ├── Score all query-document pairs                           │
+│   ├── Apply diversity (MMR)                                    │
+│   └── Apply feedback boosts                                    │
+└───────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────────────────────────────┐
+│ Quality & Explanation                                          │
+│   ├── CriticAgent.evaluate_quality()                           │
+│   ├── ExplanationAgent.explain_results()                       │
+│   └── ConfidenceScorer.score()                                │
+└───────────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌───────────────────────────────────────────────────────────────┐
+│ Response                                                       │
+│ {                                                              │
+│   results: [...],                                              │
+│   response_message: "...",                                     │
+│   confidence: 0.85,                                            │
+│   steps: [...],                                                │
+│   agents_used: [...]                                           │
+│ }                                                              │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Technology Stack
 
-### Core Technologies
+### Backend
+- **FastAPI** - High-performance async API
+- **LangGraph** - Agent workflow orchestration
+- **OpenSearch** - Vector + BM25 hybrid search
+- **Sentence-Transformers** - Local embeddings
+- **Ollama** - Local LLM inference
+- **NetworkX** - Knowledge graph
+- **SQLite** - Lightweight persistence
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **Frontend** | React 18 + Vite | Modern SPA with hot reload |
-| **Backend** | FastAPI (Python) | Async REST API + SSE |
-| **Vector DB** | OpenSearch 2.x | Hybrid search (BM25 + kNN) |
-| **LLM** | Ollama (qwen2.5:7b) | Local language model |
-| **Embeddings** | nomic-embed-text | 768-dimensional vectors |
-| **Storage** | SQLite | Users, conversations, memory |
+### Frontend
+- **React 18** - UI framework
+- **Vite** - Build tool
+- **Canvas API** - Graph visualization
 
-### Python Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `fastapi` | Web framework |
-| `uvicorn` | ASGI server |
-| `opensearch-py` | OpenSearch client |
-| `sentence-transformers` | Embedding generation |
-| `langgraph` | Agent workflow (optional) |
-| `loguru` | Logging |
-| `httpx` | Async HTTP client |
-
-### Frontend Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `react` | UI framework |
-| `vite` | Build tool |
-| `lucide-react` | Icons |
-| `react-markdown` | Markdown rendering |
+### Infrastructure
+- **Docker** - OpenSearch containerization
+- **Uvicorn** - ASGI server
 
 ---
 
-## API Reference
+## Performance Considerations
 
-### Authentication
+### Optimizations
 
-```http
-POST /auth/register
-POST /auth/login
-POST /auth/logout
-GET /auth/me
-```
+1. **Embedding Cache** - Local sentence-transformers avoid Ollama latency
+2. **Connection Pooling** - Reused OpenSearch connections
+3. **Async Operations** - Non-blocking I/O throughout
+4. **Batch Processing** - Document ingestion in configurable batches
+5. **Result Caching** - Memoized expensive computations
 
-### Search & Chat
+### Scaling
 
-```http
-POST /search/enhanced
-Content-Type: application/json
-
-{
-    "query": "find invoices from 2024",
-    "session_id": "uuid",
-    "attached_documents": ["doc_id_1"]
-}
-```
-
-**Response:**
-```json
-{
-    "status": "success",
-    "response_message": "I found 5 invoices...",
-    "results": [...],
-    "routing_path": "Zeus → Athena → Search → Hermes → Diogenes",
-    "steps": [
-        {"agent": "⚡ Zeus (The Conductor)", "action": "Receiving Query"},
-        {"agent": "🦉 Athena (The Strategist)", "action": "Analyzing Intent"}
-    ]
-}
-```
-
-### Document Indexing
-
-```http
-POST /index/directory
-Content-Type: application/json
-
-{
-    "directory_path": "C:\\Users\\You\\Documents",
-    "user_id": "user123"
-}
-```
-
-### Conversations
-
-```http
-GET /conversations/{user_id}
-POST /conversations
-GET /conversations/{conversation_id}/messages
-POST /conversations/{conversation_id}/documents
-```
+- **Horizontal**: Add OpenSearch nodes
+- **Vertical**: GPU for embeddings and LLM
+- **Caching**: Redis for query cache (future)
 
 ---
 
-## Database Schema
+## Security
 
-### SQLite Tables
-
-**users**
-| Column | Type | Description |
-|--------|------|-------------|
-| id | TEXT PRIMARY KEY | User ID |
-| username | TEXT UNIQUE | Username |
-| password_hash | TEXT | Hashed password |
-| created_at | TIMESTAMP | Creation time |
-
-**conversations**
-| Column | Type | Description |
-|--------|------|-------------|
-| id | TEXT PRIMARY KEY | Conversation ID |
-| user_id | TEXT | Owner user |
-| title | TEXT | Conversation title |
-| created_at | TIMESTAMP | Creation time |
-| attached_documents | TEXT | JSON array of doc IDs |
-
-**messages**
-| Column | Type | Description |
-|--------|------|-------------|
-| id | TEXT PRIMARY KEY | Message ID |
-| conversation_id | TEXT | Parent conversation |
-| role | TEXT | "user" or "assistant" |
-| content | TEXT | Message content |
-| metadata | TEXT | JSON metadata |
-| created_at | TIMESTAMP | Creation time |
-
-### OpenSearch Index
-
-**Index: `documents`**
-```json
-{
-    "mappings": {
-        "properties": {
-            "filename": {"type": "text"},
-            "file_path": {"type": "keyword"},
-            "content": {"type": "text"},
-            "content_summary": {"type": "text"},
-            "embedding": {
-                "type": "knn_vector",
-                "dimension": 768,
-                "method": {
-                    "name": "hnsw",
-                    "engine": "nmslib"
-                }
-            },
-            "document_type": {"type": "keyword"},
-            "indexed_at": {"type": "date"},
-            "user_id": {"type": "keyword"}
-        }
-    }
-}
-```
+- **Authentication**: JWT-based user authentication
+- **Authorization**: User-scoped conversations and feedback
+- **Secrets**: Environment variables for credentials
+- **SSL**: OpenSearch communication encrypted
 
 ---
 
-## Configuration
-
-### config.yaml Structure
-
-```yaml
-# ===== Ollama Configuration =====
-ollama:
-  base_url: "http://localhost:11434"
-  timeout: 120.0
-  text_model:
-    name: "qwen2.5:7b"
-    temperature: 0.7
-  vision_model:
-    name: "qwen2.5vl:latest"
-
-# ===== OpenSearch Configuration =====
-opensearch:
-  host: "localhost"
-  port: 9200
-  index:
-    documents: "documents"
-    conversations: "conversations"
-
-# ===== Embedding Model =====
-embedding:
-  model: "nomic-embed-text"
-  dimension: 768
-
-# ===== Search Configuration =====
-search:
-  hybrid:
-    enabled: true
-    vector_weight: 0.7
-    bm25_weight: 0.3
-  recall:
-    top_k: 50
-  rerank:
-    top_k: 10
-
-# ===== Agent Configuration =====
-agents:
-  classifier:
-    enabled: true
-  clarification:
-    enabled: true
-  analysis:
-    enabled: true
-  summarization:
-    enabled: true
-  explanation:
-    enabled: true
-  critic:
-    enabled: true
-
-# ===== Memory System =====
-memory:
-  backend: "sqlite"
-  max_history: 20
-```
-
----
-
-## Intent Types
-
-Athena classifies queries into these intents:
-
-| Intent | Description | Agent Path |
-|--------|-------------|------------|
-| `DOCUMENT_SEARCH` | Search for documents | Search → Hermes → Diogenes |
-| `GENERAL_KNOWLEDGE` | General questions | LLM → Diogenes |
-| `COMPARISON` | Compare documents | Search → Aristotle → Diogenes |
-| `ANALYSIS` | Analyze documents | Search → Aristotle → Diogenes |
-| `SUMMARIZATION` | Summarize results | Search → Thoth → Diogenes |
-| `CLARIFICATION_NEEDED` | Ambiguous query | Socrates |
-| `SYSTEM_META` | Help/about questions | LLM |
-
----
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test with `pytest backend/tests/`
-5. Submit a pull request
-
----
-
-**Built with the wisdom of the Greek Pantheon 🏛️**
+<p align="center">
+  <i>Architecture designed for extensibility and local-first AI</i>
+</p>

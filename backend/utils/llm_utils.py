@@ -277,20 +277,65 @@ def get_document_content(document: Dict[str, Any], max_length: int = 1000) -> st
 
 def sanitize_llm_response(response: str) -> str:
     """
-    Sanitize LLM response by removing unwanted artifacts
+    Sanitize LLM response by extracting JSON from potentially messy output.
+    
+    Handles cases where LLM returns:
+    - Pure JSON
+    - JSON wrapped in markdown code blocks
+    - JSON with text before/after it
+    - Multiple JSON objects (takes the first one)
     
     Args:
         response: Raw LLM response
         
     Returns:
-        Cleaned response
+        Cleaned JSON string
     """
-    # Remove potential JSON markdown code blocks
-    if response.startswith("```json"):
-        response = response[7:]
-    if response.startswith("```"):
-        response = response[3:]
-    if response.endswith("```"):
-        response = response[:-3]
+    import re
     
-    return response.strip()
+    if not response:
+        return "{}"
+    
+    text = response.strip()
+    
+    # Step 1: Remove markdown code blocks
+    if text.startswith("```json"):
+        text = text[7:]
+    elif text.startswith("```"):
+        text = text[3:]
+    if text.endswith("```"):
+        text = text[:-3]
+    text = text.strip()
+    
+    # Step 2: If it's already valid JSON, return it
+    try:
+        json.loads(text)
+        return text
+    except json.JSONDecodeError:
+        pass
+    
+    # Step 3: Try to extract JSON object from text
+    # Look for { ... } pattern
+    json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', text, re.DOTALL)
+    if json_match:
+        extracted = json_match.group(0)
+        try:
+            json.loads(extracted)
+            return extracted
+        except json.JSONDecodeError:
+            pass
+    
+    # Step 4: Try more aggressive extraction - find first { and last }
+    first_brace = text.find('{')
+    last_brace = text.rfind('}')
+    if first_brace != -1 and last_brace > first_brace:
+        candidate = text[first_brace:last_brace + 1]
+        try:
+            json.loads(candidate)
+            return candidate
+        except json.JSONDecodeError:
+            pass
+    
+    # Step 5: Return original (let caller handle the error)
+    return text.strip()
+

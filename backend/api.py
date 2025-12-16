@@ -330,6 +330,19 @@ async def enhanced_search(request: SearchRequest):
             result["conversation_id"] = conversation_id
             result["status"] = result.get("status", "success")
             
+            # Ensure confidence is always present (calculate from results if not set)
+            if "confidence" not in result or result.get("confidence") is None:
+                results = result.get("results", [])
+                if results:
+                    # Calculate confidence from average result score
+                    scores = [r.get("score", 0.5) for r in results]
+                    avg_score = sum(scores) / len(scores) if scores else 0.5
+                    # Scale to 0.5-0.95 range based on result count and scores
+                    result_boost = min(len(results) / 10, 0.2)  # Up to 0.2 for 10+ results
+                    result["confidence"] = min(0.95, avg_score * 0.7 + result_boost + 0.1)
+                else:
+                    result["confidence"] = 0.3  # Low confidence with no results
+            
             # Save assistant response
             if conversation_id and conversation_manager:
                 try:
@@ -976,7 +989,200 @@ async def clear_session(session_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# --- DOCUMENT PREVIEW API ---
+# --- NEW: KNOWLEDGE GRAPH ENDPOINTS ---
+
+class GraphQueryRequest(BaseModel):
+    entity_name: str
+    entity_type: Optional[str] = None
+    hops: int = 2
+
+
+@app.get("/graph/stats")
+async def get_graph_stats():
+    """Get knowledge graph statistics"""
+    try:
+        if enhanced_orchestrator and enhanced_orchestrator.knowledge_graph:
+            stats = enhanced_orchestrator.knowledge_graph.get_stats()
+            return {"status": "success", **stats}
+        return {"status": "unavailable", "message": "Knowledge graph not initialized"}
+    except Exception as e:
+        logger.error(f"Graph stats error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/graph/entities")
+async def search_entities(name: str, limit: int = 10):
+    """Search for entities by name"""
+    try:
+        if not enhanced_orchestrator or not enhanced_orchestrator.knowledge_graph:
+            raise HTTPException(status_code=503, detail="Knowledge graph not available")
+        
+        entities = enhanced_orchestrator.knowledge_graph.find_entities_by_name(name)
+        result = [e.to_dict() for e in entities[:limit]]
+        return {"status": "success", "entities": result, "count": len(result)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Entity search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/graph/expand")
+async def expand_entity(request: GraphQueryRequest):
+    """Get related entities via graph traversal"""
+    try:
+        if not enhanced_orchestrator or not enhanced_orchestrator.graph_rag:
+            raise HTTPException(status_code=503, detail="Graph RAG not available")
+        
+        expansion = await enhanced_orchestrator.graph_rag.expand_query(
+            query=request.entity_name,
+            extracted_entities=[request.entity_name],
+            max_hops=request.hops
+        )
+        
+        return {
+            "status": "success",
+            "original": expansion.original_entities,
+            "expanded": expansion.expanded_entities,
+            "related_documents": expansion.related_documents[:10],
+            "path": expansion.expansion_path
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Graph expansion error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/graph/entity/{entity_id}/context")
+async def get_entity_context(entity_id: str):
+    """Get full context for an entity including relationships"""
+    try:
+        if not enhanced_orchestrator or not enhanced_orchestrator.knowledge_graph:
+            raise HTTPException(status_code=503, detail="Knowledge graph not available")
+        
+        context = enhanced_orchestrator.knowledge_graph.get_entity_context(entity_id)
+        return {"status": "success", **context}
+    except Exception as e:
+        logger.error(f"Entity context error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- NEW: EPISODIC MEMORY ENDPOINTS ---
+
+@app.get("/memory/episodes/{user_id}")
+async def get_user_episodes(user_id: str, limit: int = 20):
+    """Get recent interaction episodes for a user"""
+    try:
+        if not enhanced_orchestrator or not enhanced_orchestrator.episodic_memory:
+            raise HTTPException(status_code=503, detail="Episodic memory not available")
+        
+        episodes = enhanced_orchestrator.episodic_memory.get_user_episodes(user_id, limit)
+        return {
+            "status": "success",
+            "episodes": [e.to_dict() for e in episodes],
+            "count": len(episodes)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Episodes fetch error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/memory/episodes/{user_id}/summary")
+async def get_episode_summary(user_id: str, days: int = 30):
+    """Get summary of user's interaction episodes"""
+    try:
+        if not enhanced_orchestrator or not enhanced_orchestrator.episodic_memory:
+            raise HTTPException(status_code=503, detail="Episodic memory not available")
+        
+        from dataclasses import asdict
+        summary = enhanced_orchestrator.episodic_memory.summarize_episodes(user_id, days)
+        return {"status": "success", **asdict(summary)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Episode summary error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- NEW: CONFIDENCE SCORING ENDPOINT ---
+
+class ConfidenceRequest(BaseModel):
+    answer: str
+    query: str
+    source_ids: List[str] = []
+
+
+@app.post("/analyze/confidence")
+async def score_confidence(request: ConfidenceRequest):
+    """Get confidence score for an answer with evidence assessment"""
+    try:
+        if not enhanced_orchestrator or not enhanced_orchestrator.confidence_scorer:
+            raise HTTPException(status_code=503, detail="Confidence scorer not available")
+        
+        # Fetch source documents if IDs provided
+        sources = []
+        if request.source_ids and opensearch_client:
+            for doc_id in request.source_ids[:5]:
+                try:
+                    doc = await opensearch_client.get_document(doc_id)
+                    if doc:
+                        sources.append(doc)
+                except Exception:
+                    pass
+        
+        from dataclasses import asdict
+        response = await enhanced_orchestrator.confidence_scorer.create_confidence_aware_response(
+            answer=request.answer,
+            query=request.query,
+            sources=sources
+        )
+        
+        return {
+            "status": "success",
+            "confidence": response.confidence,
+            "evidence_strength": asdict(response.evidence_strength),
+            "alternatives": response.alternative_interpretations,
+            "followups": response.suggested_followups,
+            "uncertainty_reasons": response.uncertainty_reasons
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Confidence scoring error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- NEW: ADAPTIVE RETRIEVAL STRATEGY ENDPOINT ---
+
+@app.post("/search/strategy")
+async def get_retrieval_strategy(query: str):
+    """Get recommended retrieval strategy for a query"""
+    try:
+        if not enhanced_orchestrator or not enhanced_orchestrator.adaptive_retriever:
+            raise HTTPException(status_code=503, detail="Adaptive retriever not available")
+        
+        decision = enhanced_orchestrator.adaptive_retriever.classify_strategy(query)
+        
+        return {
+            "status": "success",
+            "query": query,
+            "primary_strategy": decision.primary_strategy.value,
+            "secondary_strategy": decision.secondary_strategy.value if decision.secondary_strategy else None,
+            "confidence": decision.confidence,
+            "reasoning": decision.reasoning,
+            "weights": decision.weights
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Strategy classification error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 
 @app.get("/documents/{document_id}/preview")
 async def preview_document(document_id: str, max_length: int = 500):
@@ -999,7 +1205,7 @@ async def preview_document(document_id: str, max_length: int = 500):
         doc = response['_source']
         
         # Extract preview
-        content_preview = doc.get('content_summary', doc.get('text', ''))[:max_length]
+        content_preview = (doc.get('detailed_summary', '') or doc.get('content_summary', '') or doc.get('text', ''))[:max_length]
         
         return {
             "status": "success",
@@ -1016,6 +1222,108 @@ async def preview_document(document_id: str, max_length: int = 500):
         raise
     except Exception as e:
         logger.error(f"Document preview error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/documents/{document_id}/entities")
+async def get_document_entities(document_id: str):
+    """Get entities, keywords, and topics for a document (for knowledge graph display)"""
+    if not opensearch_client:
+        raise HTTPException(status_code=503, detail="Search not available")
+    
+    try:
+        response = await opensearch_client.client.get(
+            index=opensearch_client.index_name,
+            id=document_id
+        )
+        
+        if not response or 'found' not in response or not response['found']:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        doc = response['_source']
+        
+        # Extract entity-related data
+        entities = doc.get('entities', [])
+        keywords = doc.get('keywords', '')
+        topics = doc.get('topics', [])
+        
+        # Parse keywords into list if string
+        if isinstance(keywords, str):
+            keywords_list = [k.strip() for k in keywords.split(',') if k.strip()]
+        else:
+            keywords_list = keywords or []
+        
+        # Build graph data structure for visualization
+        nodes = []
+        edges = []
+        
+        # Document as central node
+        nodes.append({
+            "id": "doc",
+            "label": doc.get('filename', 'Document'),
+            "type": "document",
+            "size": 30
+        })
+        
+        # Add entity nodes
+        for i, entity in enumerate(entities[:20]):  # Limit to 20 entities
+            entity_name = entity if isinstance(entity, str) else entity.get('name', str(entity))
+            nodes.append({
+                "id": f"e{i}",
+                "label": entity_name,
+                "type": "entity",
+                "size": 15
+            })
+            edges.append({
+                "source": "doc",
+                "target": f"e{i}",
+                "type": "contains"
+            })
+        
+        # Add keyword nodes
+        for i, keyword in enumerate(keywords_list[:15]):  # Limit to 15 keywords
+            nodes.append({
+                "id": f"k{i}",
+                "label": keyword,
+                "type": "keyword",
+                "size": 10
+            })
+            edges.append({
+                "source": "doc",
+                "target": f"k{i}",
+                "type": "keyword"
+            })
+        
+        # Add topic nodes
+        for i, topic in enumerate(topics[:10]):  # Limit to 10 topics
+            nodes.append({
+                "id": f"t{i}",
+                "label": topic,
+                "type": "topic",
+                "size": 12
+            })
+            edges.append({
+                "source": "doc",
+                "target": f"t{i}",
+                "type": "topic"
+            })
+        
+        return {
+            "status": "success",
+            "document_id": document_id,
+            "filename": doc.get('filename'),
+            "entities": entities,
+            "keywords": keywords_list,
+            "topics": topics,
+            "graph": {
+                "nodes": nodes,
+                "edges": edges
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Document entities error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
