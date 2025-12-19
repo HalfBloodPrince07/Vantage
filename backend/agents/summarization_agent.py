@@ -18,7 +18,7 @@ class SummarizationAgent:
         self.name = f"{self.AGENT_NAME} ({self.AGENT_TITLE})"
         self.config = config
         self.ollama_url = config['ollama']['base_url']
-        self.model = config['ollama']['text_model']['name']
+        self.model = config['ollama']['unified_model']['name']
 
     async def summarize_documents(
         self,

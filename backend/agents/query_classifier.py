@@ -59,7 +59,7 @@ class QueryClassifier:
         self.name = f"{self.AGENT_NAME} ({self.AGENT_TITLE})"
         self.config = config
         self.ollama_url = config['ollama']['base_url']
-        self.model = config['ollama']['text_model']['name']
+        self.model = config['ollama']['unified_model']['name']
 
         # Document-related keywords (HIGH PRIORITY - check first)
         self.doc_keywords = [

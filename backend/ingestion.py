@@ -47,8 +47,8 @@ class IngestionPipeline:
         self.config = config
         self.opensearch = opensearch_client
         self.ollama_url = config['ollama']['base_url']
-        self.text_model = config['ollama']['text_model']['name']
-        self.vision_model = config['ollama']['vision_model']['name']
+        # Unified model for both text and vision tasks
+        self.unified_model = config['ollama']['unified_model']['name']
         
         # Summary settings (no chunking)
         summary_config = config['ingestion'].get('summary', {})
@@ -451,9 +451,10 @@ TOPICS: [topic1, topic2, topic3, ...]"""
             response = await self.client.post(
                 f"{self.ollama_url}/api/generate",
                 json={
-                    "model": self.text_model,
+                    "model": self.unified_model,
                     "prompt": prompt,
                     "stream": False,
+                    "think": True,  # Enable chain-of-thought for better extraction
                     "options": {
                         "temperature": 0.3,
                         "num_predict": 2000  # Much longer for detailed summaries
@@ -521,9 +522,10 @@ TOPICS: [data themes and subject areas]"""
             response = await self.client.post(
                 f"{self.ollama_url}/api/generate",
                 json={
-                    "model": self.text_model,
+                    "model": self.unified_model,
                     "prompt": prompt,
                     "stream": False,
+                    "think": True,  # Enable reasoning for spreadsheet analysis
                     "options": {"temperature": 0.3, "num_predict": 1500}
                 },
                 timeout=120.0
@@ -583,10 +585,11 @@ TOPICS: [topic1, topic2, topic3, ...]"""
                 response = await self.client.post(
                     f"{self.ollama_url}/api/generate",
                     json={
-                        "model": self.vision_model,
+                        "model": self.unified_model,
                         "prompt": prompt,
                         "images": [image_base64],
                         "stream": False,
+                        "think": True,  # Enable reasoning for detailed image description
                         "options": {"temperature": 0.3, "num_predict": 1500}
                     },
                     timeout=180.0
@@ -724,11 +727,11 @@ Your description should include:
 
 Provide a comprehensive description (3-5 sentences) that would help someone find this image through a text search. Be specific and detailed."""
 
-                logger.debug(f"Sending image to Ollama model: {self.vision_model}")
+                logger.debug(f"Sending image to Ollama model: {self.unified_model}")
                 response = await self.client.post(
                     f"{self.ollama_url}/api/generate",
                     json={
-                        "model": self.vision_model,
+                        "model": self.unified_model,
                         "prompt": prompt,
                         "images": [image_base64],
                         "stream": False,
@@ -836,7 +839,7 @@ ENTITIES: [entity1, entity2, entity3, ...]"""
             response = await self.client.post(
                 f"{self.ollama_url}/api/generate",
                 json={
-                    "model": self.text_model,
+                    "model": self.unified_model,
                     "prompt": prompt,
                     "stream": False,
                     "options": {

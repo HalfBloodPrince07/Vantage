@@ -761,7 +761,7 @@ class EnhancedOrchestrator:
             prompt = f"You are a helpful AI assistant.\n{history_context}User: {query}\n\nAssistant:"
             response_text = await call_ollama_with_retry(
                 base_url=self.config['ollama']['base_url'],
-                model=self.config['ollama']['text_model']['name'],
+                model=self.config['ollama']['unified_model']['name'],
                 prompt=prompt, max_retries=3,
                 timeout=self.config['ollama'].get('timeout', 120.0),
                 temperature=0.7,

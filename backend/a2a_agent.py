@@ -317,7 +317,7 @@ class ConversationAgent(A2AAgent):
             config
         )
         self.ollama_url = config['ollama']['base_url']
-        self.model = config['ollama']['text_model']['name']
+        self.model = config['ollama']['unified_model']['name']
         self.status_messages = config['agent']['status_messages']
         self.templates = config['agent']['templates']
         

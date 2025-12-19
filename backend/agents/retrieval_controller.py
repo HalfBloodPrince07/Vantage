@@ -71,7 +71,7 @@ class RetrievalController:
         
         # LLM settings for reformulation
         self.ollama_url = config.get('ollama', {}).get('base_url', 'http://localhost:11434')
-        self.model = config.get('ollama', {}).get('text_model', {}).get('name', 'llama3.2')
+        self.model = config.get('ollama', {}).get('unified_model', {}).get('name', 'qwen3-vl:8b')
         
         logger.info(f"🔄 {self.AGENT_NAME} initialized (max_iterations={max_iterations}, threshold={quality_threshold})")
     

@@ -62,7 +62,7 @@ class ConfidenceScorer:
         self.config = config
         self.name = f"{self.AGENT_NAME} ({self.AGENT_TITLE})"
         self.ollama_url = config['ollama']['base_url']
-        self.model = config['ollama']['text_model']['name']
+        self.model = config['ollama']['unified_model']['name']
         
         logger.info(f"⚖️ {self.name} initialized for confidence scoring")
     

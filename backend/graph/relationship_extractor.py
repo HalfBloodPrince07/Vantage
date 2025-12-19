@@ -60,7 +60,7 @@ class RelationshipExtractor:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.ollama_url = config['ollama']['base_url']
-        self.model = config['ollama']['text_model']['name']
+        self.model = config['ollama']['unified_model']['name']
         
         logger.info(f"🔧 {self.AGENT_NAME} ({self.AGENT_TITLE}) initialized")
     
@@ -148,7 +148,8 @@ If no clear relationships exist, return {{"relationships": []}}"""
                 temperature=0.2,
                 fallback_data=fallback,
                 model_type="text",
-                config=self.config
+                config=self.config,
+                think=True  # Enable reasoning for relationship discovery
             )
             
             relationships = []

@@ -222,8 +222,8 @@ async def health_check():
         return {
             "status": "healthy" if opensearch_status else "degraded",
             "opensearch": "connected" if opensearch_status else "disconnected",
-            "text_model": config['ollama']['text_model']['name'],
-            "vision_model": config['ollama']['vision_model']['name'],
+            "text_model": config['ollama']['unified_model']['name'],
+            "vision_model": config['ollama']['unified_model']['name'],
             "hybrid_search": config['search']['hybrid']['enabled'],
             "memory_system": memory_status,
             "enhanced_orchestrator": orchestrator_status,

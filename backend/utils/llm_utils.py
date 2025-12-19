@@ -35,7 +35,8 @@ async def call_ollama_with_retry(
     validator: Optional[Callable[[str], bool]] = None,
     model_type: str = "text",
     images: Optional[List[str]] = None,
-    config: Optional[Dict] = None
+    config: Optional[Dict] = None,
+    think: bool = False  # Enable Ollama thinking mode for chain-of-thought reasoning
 ) -> str:
     """
     Call Ollama API with automatic retry and validation
@@ -77,7 +78,8 @@ async def call_ollama_with_retry(
                     "model": model,
                     "prompt": prompt,
                     "stream": stream,
-                    "options": {"temperature": temperature}
+                    "options": {"temperature": temperature},
+                    "think": think  # Enable chain-of-thought reasoning
                 }
                 
                 # Add images for vision models
@@ -86,6 +88,9 @@ async def call_ollama_with_retry(
                 
                 if format:
                     request_data["format"] = format
+                
+                if think:
+                    logger.debug(f"🧠 Thinking mode enabled for this LLM call")
                 
                 logger.debug(f"LLM call attempt {attempt + 1}/{max_retries}")
                 
@@ -154,7 +159,8 @@ async def call_ollama_json(
     temperature: float = 0.2,
     fallback_data: Optional[Dict] = None,
     model_type: str = "text",
-    config: Optional[Dict] = None
+    config: Optional[Dict] = None,
+    think: bool = False  # Enable Ollama thinking mode
 ) -> Dict[str, Any]:
     """
     Call Ollama API expecting JSON response
@@ -169,6 +175,7 @@ async def call_ollama_json(
         fallback_data: Fallback dict if parsing fails
         model_type: Type of model ("text" or "vision")
         config: Full config dict for model manager
+        think: Enable chain-of-thought reasoning
         
     Returns:
         Parsed JSON dict
@@ -201,7 +208,8 @@ async def call_ollama_json(
             validator=validate_json,
             fallback_response=None,  # We'll handle fallback after JSON parsing
             model_type=model_type,
-            config=config
+            config=config,
+            think=think  # Pass through thinking mode
         )
         
         # Parse JSON

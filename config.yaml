@@ -5,23 +5,16 @@ ollama:
   base_url: "http://localhost:11434"
   timeout: 500
   
-  # Text model for document processing & general queries
-  text_model:
-    name: "qwen2.5:7b"
+  # Unified Vision-Language Model (handles both text and images)
+  unified_model:
+    name: "qwen3-vl:8b"
     temperature: 0.3
     max_tokens: 2048
     
-  # Vision model for image tasks
-  vision_model:
-    name: "qwen2.5vl:latest"
-    temperature: 0.2
-    max_tokens: 1024
-    
-  # Dynamic loading settings
+  # Dynamic loading settings (simplified for single model)
   model_management:
-    auto_unload: false         # Set to true to unload inactive models
-    keep_both_loaded: true      # Keep both in VRAM (16GB has space for both)
-    unload_after_seconds: 300   # Unload after 5 min idle (if auto_unload=true)
+    auto_unload: false
+    unload_after_seconds: 300
 
 # OpenSearch Configuration
 opensearch:

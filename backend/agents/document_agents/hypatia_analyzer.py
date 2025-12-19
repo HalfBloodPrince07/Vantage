@@ -90,14 +90,15 @@ class HypatiaAnalyzer:
         try:
             response = await call_ollama_with_retry(
                 base_url=self.config['ollama']['base_url'],
-                model=self.config['ollama']['text_model']['name'],
+                model=self.config['ollama']['unified_model']['name'],
                 prompt=analysis_prompt,
                 max_retries=2,
                 timeout=self.config['ollama'].get('timeout', 120.0),
                 temperature=0.3,  # Lower temperature for more analytical output
                 fallback_response=None,
                 model_type="text",
-                config=self.config
+                config=self.config,
+                think=True  # Enable reasoning for semantic analysis
             )
             
             parsed = self._parse_analysis_response(response, text, filename)
