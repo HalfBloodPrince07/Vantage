@@ -1,0 +1,12 @@
+{
+  "step_number": 2,
+  "step_name": "extract_content",
+  "status": "completed",
+  "timestamp": "2025-12-23T00:17:35.562173",
+  "duration_ms": 470.2467918395996,
+  "details": {
+    "content_type": "text",
+    "content_length": 7579,
+    "page_count": 3
+  }
+}

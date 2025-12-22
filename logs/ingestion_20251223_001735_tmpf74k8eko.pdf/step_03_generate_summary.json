@@ -1,0 +1,14 @@
+{
+  "step_number": 3,
+  "step_name": "generate_summary",
+  "status": "completed",
+  "timestamp": "2025-12-23T00:18:12.073493",
+  "duration_ms": 36510.31804084778,
+  "details": {
+    "summary_length": 3756,
+    "keywords_count": 25,
+    "entities_count": 49,
+    "relationships_count": 15,
+    "topics_count": 10
+  }
+}

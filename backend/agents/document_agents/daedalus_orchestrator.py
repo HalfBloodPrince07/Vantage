@@ -31,6 +31,7 @@ from .prometheus_reader import PrometheusReader, ExtractedContent
 from .hypatia_analyzer import HypatiaAnalyzer, SemanticAnalysis
 from .mnemosyne_extractor import MnemosyneExtractor, DocumentInsights
 from backend.utils.llm_utils import call_ollama_with_retry
+from backend.streaming_steps import emit_step
 
 
 @dataclass
@@ -137,7 +138,8 @@ class DaedalusOrchestrator:
         self,
         query: str,
         attached_documents: List[Dict[str, Any]],
-        conversation_history: Optional[List[Dict]] = None
+        conversation_history: Optional[List[Dict]] = None,
+        session_id: Optional[str] = None
     ) -> DocumentQueryResponse:
         """
         Main entry point for document-specific queries.
@@ -146,6 +148,7 @@ class DaedalusOrchestrator:
             query: User's question
             attached_documents: List of {id, path, filename, content?}
             conversation_history: Previous conversation turns
+            session_id: Session ID for streaming steps to frontend
             
         Returns:
             DocumentQueryResponse with answer and sources
@@ -153,14 +156,24 @@ class DaedalusOrchestrator:
         thinking_steps = []
         agents_used = [self.name]
         
-        # Step 1: Process all attached documents
-        thinking_steps.append({
-            "agent": self.name,
-            "step": "Analyzing attached documents...",
-            "detail": f"Processing {len(attached_documents)} document(s)"
-        })
+        def add_step(agent: str, action: str, details: str = ""):
+            """Helper to add and emit a step"""
+            step = {
+                "agent": agent,
+                "action": action,
+                "details": details,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            thinking_steps.append(step)
+            if session_id:
+                emit_step(session_id, {"type": "step", **step})
+            logger.info(f"🏛️ [{agent}] {action}: {details}")
         
-        processed_docs = await self._process_documents(attached_documents)
+        # Step 1: Process all attached documents
+        add_step("🏛️ Daedalus (The Architect)", "Analyzing Documents", 
+                f"Processing {len(attached_documents)} document(s)")
+        
+        processed_docs = await self._process_documents(attached_documents, session_id)
         agents_used.extend([
             "Prometheus (The Illuminator)", 
             "Hypatia (The Scholar)", 
@@ -168,24 +181,21 @@ class DaedalusOrchestrator:
         ])
         
         # Step 2: Build context from all documents
-        thinking_steps.append({
-            "agent": "Hypatia (The Scholar)",
-            "step": "Building semantic understanding...",
-            "detail": "Analyzing structure and meaning"
-        })
+        add_step("📚 Hypatia (The Scholar)", "Building Context", 
+                "Analyzing structure and semantic meaning")
         
         combined_context = self._build_combined_context(processed_docs)
         
-        # Step 3: Answer the query
-        thinking_steps.append({
-            "agent": "Mnemosyne (The Keeper)",
-            "step": "Searching for relevant information...",
-            "detail": "Extracting insights to answer your question"
-        })
+        # Step 3: Answer the query with LLM
+        add_step("💬 Oracle (LLM)", "Generating Answer", 
+                "Synthesizing response from document insights")
         
         answer, sources, confidence = await self._answer_query(
             query, processed_docs, combined_context, conversation_history
         )
+        
+        add_step("🏛️ Daedalus (The Architect)", "Complete", 
+                f"Generated response with {len(sources)} source(s)")
         
         return DocumentQueryResponse(
             answer=answer,
@@ -197,10 +207,22 @@ class DaedalusOrchestrator:
     
     async def _process_documents(
         self, 
-        documents: List[Dict[str, Any]]
+        documents: List[Dict[str, Any]],
+        session_id: Optional[str] = None
     ) -> List[ProcessedDocument]:
         """Process documents through the full pipeline"""
         processed = []
+        
+        def emit(agent: str, action: str, details: str = ""):
+            if session_id:
+                emit_step(session_id, {
+                    "type": "step",
+                    "agent": agent,
+                    "action": action,
+                    "details": details,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+            logger.info(f"[{agent}] {action}: {details}")
         
         for doc in documents:
             doc_id = doc.get('id') or doc.get('path') or doc.get('filename')
@@ -216,7 +238,9 @@ class DaedalusOrchestrator:
                 file_path = doc.get('path') or doc.get('file_path')
                 file_content = doc.get('content')  # For uploaded files
                 
-                logger.info(f"🔥 Prometheus extracting from {file_path}")
+                emit("🔥 Prometheus (The Illuminator)", "Extracting Content", 
+                     f"Reading {doc.get('filename', 'document')}")
+                
                 extracted_list = await self.prometheus.extract(
                     [file_path], 
                     [file_content] if file_content else None
@@ -228,7 +252,9 @@ class DaedalusOrchestrator:
                     continue
                 
                 # Analyze with Hypatia
-                logger.info(f"📚 Hypatia analyzing {extracted.filename}")
+                emit("📚 Hypatia (The Scholar)", "Semantic Analysis", 
+                     f"Analyzing {extracted.filename}")
+                
                 analysis = await self.hypatia.analyze({
                     'raw_text': extracted.raw_text,
                     'filename': extracted.filename,
@@ -236,7 +262,9 @@ class DaedalusOrchestrator:
                 })
                 
                 # Extract insights with Mnemosyne
-                logger.info(f"🧠 Mnemosyne extracting insights from {extracted.filename}")
+                emit("🧠 Mnemosyne (The Keeper)", "Extracting Insights", 
+                     f"Generating insights from {extracted.filename}")
+                
                 insights = await self.mnemosyne.extract_insights(
                     {'raw_text': extracted.raw_text, 'filename': extracted.filename},
                     analysis.to_dict()

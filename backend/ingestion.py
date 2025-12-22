@@ -10,6 +10,11 @@ from loguru import logger
 import httpx
 import base64
 import re
+import json
+import time
+
+# Session logging
+from backend.utils.session_logger import create_ingestion_logger, SessionLogger
 
 # File processors
 from pypdf import PdfReader
@@ -157,34 +162,69 @@ class IngestionPipeline:
                 logger.info(f"✓ Skipping existing file: {file_path.name}")
                 return {"status": "skipped", "id": doc_id}
 
+            # Initialize session logger for this document
+            session_log = create_ingestion_logger(file_path.name)
+            session_log.log_step("start", "started", {
+                "file_path": str(file_path),
+                "file_size": file_path.stat().st_size,
+                "doc_id": doc_id
+            })
+            
             logger.info(f"⚙️  Processing file: {file_path.name} (type: {file_path.suffix})")
             file_stats = file_path.stat()
 
             # 1. Extract content
+            step_start = time.time()
             logger.debug(f"  [1/4] Extracting content from {file_path.name}")
             content = await self._extract_content(file_path)
             full_text = content.get('content', '')
             content_type = content.get('type', 'text')  # text, image, spreadsheet
             page_count = content.get('page_count', 0)
+            session_log.log_step("extract_content", "completed", {
+                "content_type": content_type,
+                "content_length": len(full_text),
+                "page_count": page_count
+            }, duration_ms=(time.time() - step_start) * 1000)
             logger.debug(f"  ✓ Extracted {len(full_text)} characters (type: {content_type})")
 
             # 2. Generate DETAILED summary with entities and keywords
+            step_start = time.time()
             logger.debug(f"  [2/4] Generating detailed summary for {file_path.name}")
-            summary_data = await self._generate_detailed_summary(content, file_path)
+            summary_data = await self._generate_detailed_summary(content, file_path, session_log)
             detailed_summary = summary_data['summary']
             keywords = summary_data.get('keywords', '')
-            entities = summary_data.get('entities', [])
+            # Structured entities (dict) for hierarchical graph
+            entities_structured = summary_data.get('entities', {})
+            # Flat list for OpenSearch keyword field
+            entities_flat = summary_data.get('entities_flat', [])
+            # If entities is somehow a list (legacy), use it directly
+            if isinstance(entities_structured, list):
+                entities_flat = entities_structured
+                entities_structured = {}
             relationships = summary_data.get('relationships', [])
             topics = summary_data.get('topics', [])
+            session_log.log_step("generate_summary", "completed", {
+                "summary_length": len(detailed_summary),
+                "keywords_count": len(keywords.split(',')) if keywords else 0,
+                "entities_count": len(entities_flat),
+                "relationships_count": len(relationships),
+                "topics_count": len(topics)
+            }, duration_ms=(time.time() - step_start) * 1000)
             logger.debug(f"  ✓ Detailed summary generated (length: {len(detailed_summary)}, {len(relationships)} relationships)")
 
             # 3. Determine document type
+            step_start = time.time()
             logger.debug(f"  [3/4] Classifying document type for {file_path.name}")
             doc_type = self._classify_document(file_path, content)
             is_image = content_type == 'image'
+            session_log.log_step("classify_document", "completed", {
+                "doc_type": doc_type,
+                "is_image": is_image
+            }, duration_ms=(time.time() - step_start) * 1000)
             logger.debug(f"  ✓ Document type: {doc_type}")
 
             # 4. Generate embedding from detailed summary
+            step_start = time.time()
             logger.debug(f"  [4/4] Generating embedding for {file_path.name}")
             embedding = await self.generate_embedding(detailed_summary)
             
@@ -192,6 +232,10 @@ class IngestionPipeline:
             is_zero_vector = all(v == 0.0 for v in embedding)
             if is_zero_vector:
                 logger.warning(f"  ⚠ Zero vector embedding for {file_path.name}")
+            session_log.log_step("generate_embedding", "completed", {
+                "embedding_dim": len(embedding),
+                "is_zero_vector": is_zero_vector
+            }, duration_ms=(time.time() - step_start) * 1000)
 
             # Create SINGLE document entry with all metadata
             document = {
@@ -212,7 +256,8 @@ class IngestionPipeline:
                 
                 # Extracted metadata
                 "keywords": keywords,
-                "entities": entities,
+                "entities": entities_flat,  # Flat list for OpenSearch keyword field
+                "entities_structured": json.dumps(entities_structured) if entities_structured else "{}",  # JSON for hierarchical graph
                 "topics": topics,
                 
                 # Embedding (of detailed summary)
@@ -232,17 +277,27 @@ class IngestionPipeline:
             await self.opensearch.index_document(document)
 
             # === NEW: Index entities/relationships in Knowledge Graph ===
-            if entities or relationships:
+            if entities_flat or relationships:
                 await self._index_to_knowledge_graph(
                     doc_id=doc_id, 
                     filename=file_path.name,
-                    entities=entities,
+                    entities=entities_flat,
                     relationships=relationships,
                     content=detailed_summary
                 )
 
             elapsed = (datetime.now() - start_time).total_seconds()
             logger.info(f"✓ Successfully indexed: {file_path.name} (took {elapsed:.2f}s)")
+
+            # Log final result to session
+            session_log.log_result({
+                "status": "success",
+                "doc_id": doc_id,
+                "filename": file_path.name,
+                "summary_length": len(detailed_summary),
+                "entities_count": len(entities_flat),
+                "elapsed_seconds": elapsed
+            })
 
             # Free memory
             del document
@@ -259,6 +314,9 @@ class IngestionPipeline:
         except Exception as e:
             elapsed = (datetime.now() - start_time).total_seconds()
             logger.error(f"✗ Error processing {file_path.name} after {elapsed:.2f}s: {type(e).__name__}: {e}")
+            # Log error if session_log was created
+            if 'session_log' in locals():
+                session_log.log_error(e, "process_file")
             raise
 
     def _classify_document(self, file_path: Path, content: Dict) -> str:
@@ -375,18 +433,19 @@ class IngestionPipeline:
     async def _generate_detailed_summary(
         self,
         content: Dict[str, Any],
-        file_path: Path
+        file_path: Path,
+        session_log: Optional[SessionLogger] = None
     ) -> Dict[str, Any]:
         """Generate comprehensive detailed summary with keywords, entities, and topics"""
         
         if content['type'] == 'image':
-            return await self._process_image_detailed(content, file_path)
+            return await self._process_image_detailed(content, file_path, session_log=session_log)
         elif content['type'] == 'spreadsheet':
-            return await self._process_spreadsheet_detailed(content, file_path)
+            return await self._process_spreadsheet_detailed(content, file_path, session_log=session_log)
         else:
-            return await self._process_text_detailed(content, file_path)
+            return await self._process_text_detailed(content, file_path, session_log=session_log)
     
-    async def _process_text_detailed(self, content: Dict, file_path: Path) -> Dict[str, Any]:
+    async def _process_text_detailed(self, content: Dict, file_path: Path, session_log: Optional[SessionLogger] = None) -> Dict[str, Any]:
         """Process text document with comprehensive detailed summarization"""
         text = content.get('content', '')
         
@@ -418,15 +477,6 @@ Describe the main sections, topics, and content in detail.
 - Important dates, deadlines, or timeframes
 - Specific amounts, quantities, or measurements
 
-## Entities
-List all important names, organizations, locations, and specific identifiers.
-
-## Relationships
-Identify key relationships between entities (e.g., "Apple" | "competitor_of" | "Google").
-
-## Topics
-What are the main themes and subject areas covered?
-
 ---
 DOCUMENT CONTENT:
 {truncated}
@@ -439,7 +489,15 @@ SUMMARY:
 
 KEYWORDS: [keyword1, keyword2, keyword3, keyword4, keyword5, ...]
 
-ENTITIES: [entity1, entity2, entity3, ...]
+ENTITIES_STRUCTURED:
+PERSON: [name1, name2]
+SKILLS: [skill1, skill2, skill3, ...]
+COMPANIES: [company1, company2, ...]
+EDUCATION: [university1, degree1, ...]
+LOCATIONS: [location1, location2, ...]
+DATES: [date1, date2, ...]
+PROJECTS: [project1, project2, ...]
+TECHNOLOGIES: [tech1, tech2, ...]
 
 RELATIONSHIPS:
 [Entity1 | relationship_type | Entity2]
@@ -448,6 +506,7 @@ RELATIONSHIPS:
 TOPICS: [topic1, topic2, topic3, ...]"""
 
         try:
+            llm_start = time.time()
             response = await self.client.post(
                 f"{self.ollama_url}/api/generate",
                 json={
@@ -457,13 +516,26 @@ TOPICS: [topic1, topic2, topic3, ...]"""
                     "think": True,  # Enable chain-of-thought for better extraction
                     "options": {
                         "temperature": 0.3,
-                        "num_predict": 2000  # Much longer for detailed summaries
+                        "num_predict": 4000  # Much longer for detailed summaries
                     }
                 },
                 timeout=180.0  # Longer timeout for detailed summaries
             )
             result = response.json()
             response_text = result.get('response', '')
+            thinking_content = result.get('thinking', '')
+            llm_duration = (time.time() - llm_start) * 1000
+            
+            # Log LLM call with thinking
+            if session_log:
+                session_log.log_llm_call(
+                    step_name="text_summarization",
+                    prompt=prompt,
+                    response=response_text,
+                    thinking=thinking_content,
+                    model=self.unified_model,
+                    duration_ms=llm_duration
+                )
             
             # Parse structured response
             parsed = self._parse_detailed_response(response_text)
@@ -646,7 +718,8 @@ TOPICS: [topic1, topic2, topic3, ...]"""
         result = {
             "summary": "",
             "keywords": "",
-            "entities": [],
+            "entities": {},  # Now a dict with categories
+            "entities_flat": [],  # Flat list for backward compatibility
             "relationships": [],
             "topics": []
         }
@@ -657,25 +730,45 @@ TOPICS: [topic1, topic2, topic3, ...]"""
             result['summary'] = summary_match.group(1).strip()
         
         # Extract keywords
-        keywords_match = re.search(r'KEYWORDS:\s*(.+?)(?=ENTITIES:|RELATIONSHIPS:|TOPICS:|$)', response, re.DOTALL | re.IGNORECASE)
+        keywords_match = re.search(r'KEYWORDS:\s*(.+?)(?=ENTITIES|RELATIONSHIPS:|TOPICS:|$)', response, re.DOTALL | re.IGNORECASE)
         if keywords_match:
             keywords_text = keywords_match.group(1).strip()
             keywords_text = re.sub(r'[\[\]]', '', keywords_text)
             result['keywords'] = keywords_text
         
-        # Extract entities
-        entities_match = re.search(r'ENTITIES:\s*(.+?)(?=RELATIONSHIPS:|TOPICS:|$)', response, re.DOTALL | re.IGNORECASE)
-        if entities_match:
-            entities_text = entities_match.group(1).strip()
-            entities_text = re.sub(r'[\[\]]', '', entities_text)
-            entities = [e.strip() for e in entities_text.split(',') if e.strip()]
-            result['entities'] = entities[:30]
+        # Extract structured entities (new format)
+        entity_categories = ['PERSON', 'SKILLS', 'COMPANIES', 'EDUCATION', 'LOCATIONS', 'DATES', 'PROJECTS', 'TECHNOLOGIES']
+        entities_structured = {}
+        
+        # Look for ENTITIES_STRUCTURED: section
+        entities_section = re.search(r'ENTITIES_STRUCTURED:\s*(.+?)(?=RELATIONSHIPS:|TOPICS:|$)', response, re.DOTALL | re.IGNORECASE)
+        if entities_section:
+            section_text = entities_section.group(1)
+            for category in entity_categories:
+                cat_match = re.search(rf'{category}:\s*\[([^\]]*)\]', section_text, re.IGNORECASE)
+                if cat_match:
+                    items = [item.strip() for item in cat_match.group(1).split(',') if item.strip()]
+                    if items:
+                        entities_structured[category.lower()] = items[:15]  # Limit per category
+                        result['entities_flat'].extend(items[:15])
+        
+        # Fallback: try old ENTITIES: format if structured not found
+        if not entities_structured:
+            entities_match = re.search(r'ENTITIES:\s*(.+?)(?=RELATIONSHIPS:|TOPICS:|$)', response, re.DOTALL | re.IGNORECASE)
+            if entities_match:
+                entities_text = entities_match.group(1).strip()
+                entities_text = re.sub(r'[\[\]]', '', entities_text)
+                entities = [e.strip() for e in entities_text.split(',') if e.strip()]
+                result['entities_flat'] = entities[:30]
+                # Auto-categorize based on simple heuristics
+                entities_structured = self._auto_categorize_entities(entities[:30])
+        
+        result['entities'] = entities_structured
         
         # Extract relationships (format: Entity1 | relationship_type | Entity2)
         relationships_match = re.search(r'RELATIONSHIPS:\s*(.+?)(?=TOPICS:|$)', response, re.DOTALL | re.IGNORECASE)
         if relationships_match:
             relationships_text = relationships_match.group(1).strip()
-            # Parse each line for pipe-separated triples
             for line in relationships_text.split('\n'):
                 line = line.strip()
                 if '|' in line:
@@ -686,7 +779,7 @@ TOPICS: [topic1, topic2, topic3, ...]"""
                             "type": parts[1].lower().replace(' ', '_'),
                             "target": parts[2]
                         })
-            result['relationships'] = result['relationships'][:15]  # Limit
+            result['relationships'] = result['relationships'][:15]
         
         # Extract topics
         topics_match = re.search(r'TOPICS:\s*(.+?)$', response, re.DOTALL | re.IGNORECASE)
@@ -697,6 +790,41 @@ TOPICS: [topic1, topic2, topic3, ...]"""
             result['topics'] = topics[:10]
         
         return result
+    
+    def _auto_categorize_entities(self, entities: List[str]) -> Dict[str, List[str]]:
+        """Auto-categorize flat entity list using simple heuristics"""
+        categorized = {
+            'persons': [],
+            'skills': [],
+            'companies': [],
+            'education': [],
+            'locations': [],
+            'other': []
+        }
+        
+        # Simple keyword-based categorization
+        skill_keywords = ['python', 'java', 'javascript', 'react', 'sql', 'aws', 'docker', 'kubernetes', 
+                         'machine learning', 'ai', 'ml', 'api', 'html', 'css', 'node', 'fastapi', 'django']
+        edu_keywords = ['university', 'college', 'institute', 'school', 'degree', 'bachelor', 'master', 'phd']
+        company_suffixes = ['inc', 'llc', 'ltd', 'corp', 'company', 'technologies', 'solutions', 'services']
+        
+        for entity in entities:
+            entity_lower = entity.lower()
+            
+            if any(skill in entity_lower for skill in skill_keywords):
+                categorized['skills'].append(entity)
+            elif any(edu in entity_lower for edu in edu_keywords):
+                categorized['education'].append(entity)
+            elif any(suffix in entity_lower for suffix in company_suffixes):
+                categorized['companies'].append(entity)
+            elif len(entity.split()) <= 3 and entity[0].isupper():
+                # Likely a person name (2-3 words, capitalized)
+                categorized['persons'].append(entity)
+            else:
+                categorized['other'].append(entity)
+        
+        # Remove empty categories
+        return {k: v for k, v in categorized.items() if v}
 
     async def _process_image(self, content: Dict, file_path: Path, max_retries: int = 3) -> Dict[str, Any]:
         """Process image with enhanced captioning prompt and retry logic"""
@@ -844,7 +972,7 @@ ENTITIES: [entity1, entity2, entity3, ...]"""
                     "stream": False,
                     "options": {
                         "temperature": 0.3,
-                        "num_predict": 600
+                        "num_predict": 1000
                     }
                 }
             )

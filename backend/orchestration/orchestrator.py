@@ -302,7 +302,8 @@ class EnhancedOrchestrator:
                                    "Activating", f"Processing {len(documents_data)} document(s)")
             
             daedalus_response = await self.daedalus.process_query(
-                query=query, attached_documents=documents_data, conversation_history=conversation_history
+                query=query, attached_documents=documents_data, 
+                conversation_history=conversation_history, session_id=session_id
             )
             
             total_time = asyncio.get_event_loop().time() - start_time
@@ -833,18 +834,24 @@ class EnhancedOrchestrator:
         return state
 
     async def _quality_check_node(self, state: WorkflowState) -> WorkflowState:
-        try:
-            self._add_step(state, "🔎 Diogenes (The Critic)", "Reviewing Quality", "Checking for relevance")
-            evaluation = await self.critic_agent.evaluate_results(query=state["query"], results=state.get("results", []))
-            state["quality_evaluation"] = evaluation
-            state["should_reformulate"] = evaluation.get("should_reformulate", False)
-            suggestions = await self.critic_agent.suggest_improvements(
-                query=state["query"], results=state.get("results", []), evaluation=evaluation)
-            state["suggestions"] = suggestions
-            self._add_step(state, "🔎 Diogenes (The Critic)", "Quality Check Complete", 
-                          f"Score: {evaluation.get('quality_score', 0):.2f}")
-        except Exception as e:
-            logger.error(f"Quality check failed: {e}")
+        """
+        Quality check node - DISABLED for performance
+        Diogenes (The Critic) was causing significant latency with additional LLM calls.
+        Quality evaluation is now done by Themis (confidence scorer) instead.
+        """
+        # Skip LLM calls - use default quality metrics based on results
+        results = state.get("results", [])
+        if results:
+            avg_score = sum(r.get('score', 0) for r in results) / len(results)
+            state["quality_evaluation"] = {
+                "quality_score": avg_score,
+                "relevance": "good" if avg_score > 0.5 else "moderate",
+                "should_reformulate": False
+            }
+        else:
+            state["quality_evaluation"] = {"quality_score": 0, "relevance": "no_results", "should_reformulate": False}
+        state["should_reformulate"] = False
+        state["suggestions"] = []
         return state
 
     async def _generate_response_node(self, state: WorkflowState) -> WorkflowState:

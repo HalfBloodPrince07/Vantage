@@ -1243,9 +1243,27 @@ async def get_document_entities(document_id: str):
         doc = response['_source']
         
         # Extract entity-related data
-        entities = doc.get('entities', [])
+        # New format: entities_structured is JSON string, entities is flat list
+        entities_structured_raw = doc.get('entities_structured', '{}')
+        entities_flat = doc.get('entities', [])  # Now flat list for keyword search
         keywords = doc.get('keywords', '')
         topics = doc.get('topics', [])
+        
+        # Parse entities_structured from JSON string
+        if isinstance(entities_structured_raw, str):
+            try:
+                entities = json.loads(entities_structured_raw)
+            except json.JSONDecodeError:
+                entities = {}
+        elif isinstance(entities_structured_raw, dict):
+            entities = entities_structured_raw
+        else:
+            entities = {}
+        
+        # Handle legacy format (entities was dict or list instead of entities_flat)
+        if not entities and isinstance(entities_flat, dict):
+            entities = entities_flat
+            entities_flat = []
         
         # Parse keywords into list if string
         if isinstance(keywords, str):
@@ -1253,71 +1271,160 @@ async def get_document_entities(document_id: str):
         else:
             keywords_list = keywords or []
         
-        # Build graph data structure for visualization
+        # Build hierarchical graph data structure
         nodes = []
         edges = []
         
-        # Document as central node
+        # Find primary person (first in persons list, or use document name)
+        persons = entities.get('person', entities.get('persons', []))
+        primary_person = persons[0] if persons else doc.get('filename', 'Document')
+        
+        # Central person node
         nodes.append({
-            "id": "doc",
-            "label": doc.get('filename', 'Document'),
-            "type": "document",
-            "size": 30
+            "id": "center",
+            "label": primary_person,
+            "type": "person",
+            "size": 35,
+            "level": 0
         })
         
-        # Add entity nodes
-        for i, entity in enumerate(entities[:20]):  # Limit to 20 entities
-            entity_name = entity if isinstance(entity, str) else entity.get('name', str(entity))
-            nodes.append({
-                "id": f"e{i}",
-                "label": entity_name,
-                "type": "entity",
-                "size": 15
-            })
-            edges.append({
-                "source": "doc",
-                "target": f"e{i}",
-                "type": "contains"
-            })
+        # Category configuration with icons and colors
+        category_config = {
+            'skills': {'icon': '💼', 'label': 'Skills', 'color': '#10b981'},
+            'technologies': {'icon': '⚡', 'label': 'Technologies', 'color': '#8b5cf6'},
+            'companies': {'icon': '🏢', 'label': 'Experience', 'color': '#f59e0b'},
+            'education': {'icon': '🎓', 'label': 'Education', 'color': '#ec4899'},
+            'projects': {'icon': '🚀', 'label': 'Projects', 'color': '#06b6d4'},
+            'locations': {'icon': '📍', 'label': 'Locations', 'color': '#6366f1'},
+            'dates': {'icon': '📅', 'label': 'Timeline', 'color': '#84cc16'}
+        }
         
-        # Add keyword nodes
-        for i, keyword in enumerate(keywords_list[:15]):  # Limit to 15 keywords
+        # Add category nodes (second level) and item nodes (third level)
+        node_id = 0
+        for category, items in entities.items():
+            if not items or category in ['person', 'persons']:
+                continue
+            
+            config = category_config.get(category, {'icon': '📌', 'label': category.title(), 'color': '#64748b'})
+            
+            # Category node (level 1)
+            cat_id = f"cat_{category}"
             nodes.append({
-                "id": f"k{i}",
-                "label": keyword,
-                "type": "keyword",
-                "size": 10
+                "id": cat_id,
+                "label": f"{config['icon']} {config['label']}",
+                "type": "category",
+                "category": category,
+                "size": 20,
+                "level": 1,
+                "color": config['color']
             })
             edges.append({
-                "source": "doc",
-                "target": f"k{i}",
-                "type": "keyword"
+                "source": "center",
+                "target": cat_id,
+                "type": "has_category"
             })
+            
+            # Item nodes (level 2) - children of category
+            for i, item in enumerate(items[:12]):  # Limit to 12 per category
+                item_id = f"{category}_{node_id}"
+                nodes.append({
+                    "id": item_id,
+                    "label": item,
+                    "type": "item",
+                    "category": category,
+                    "size": 12,
+                    "level": 2,
+                    "color": config['color']
+                })
+                edges.append({
+                    "source": cat_id,
+                    "target": item_id,
+                    "type": "contains"
+                })
+                node_id += 1
         
-        # Add topic nodes
-        for i, topic in enumerate(topics[:10]):  # Limit to 10 topics
+        # Add keywords as a separate category if no structured entities
+        if not entities and keywords_list:
+            cat_id = "cat_keywords"
             nodes.append({
-                "id": f"t{i}",
-                "label": topic,
-                "type": "topic",
-                "size": 12
+                "id": cat_id,
+                "label": "🔑 Keywords",
+                "type": "category",
+                "category": "keywords",
+                "size": 20,
+                "level": 1,
+                "color": "#f59e0b"
             })
             edges.append({
-                "source": "doc",
-                "target": f"t{i}",
-                "type": "topic"
+                "source": "center",
+                "target": cat_id,
+                "type": "has_category"
             })
+            
+            for i, keyword in enumerate(keywords_list[:15]):
+                item_id = f"kw_{i}"
+                nodes.append({
+                    "id": item_id,
+                    "label": keyword,
+                    "type": "item",
+                    "category": "keywords",
+                    "size": 10,
+                    "level": 2,
+                    "color": "#f59e0b"
+                })
+                edges.append({
+                    "source": cat_id,
+                    "target": item_id,
+                    "type": "contains"
+                })
+        
+        # Add topics as category
+        if topics:
+            cat_id = "cat_topics"
+            nodes.append({
+                "id": cat_id,
+                "label": "📂 Topics",
+                "type": "category",
+                "category": "topics",
+                "size": 18,
+                "level": 1,
+                "color": "#ec4899"
+            })
+            edges.append({
+                "source": "center",
+                "target": cat_id,
+                "type": "has_category"
+            })
+            
+            for i, topic in enumerate(topics[:8]):
+                item_id = f"topic_{i}"
+                nodes.append({
+                    "id": item_id,
+                    "label": topic,
+                    "type": "item",
+                    "category": "topics",
+                    "size": 10,
+                    "level": 2,
+                    "color": "#ec4899"
+                })
+                edges.append({
+                    "source": cat_id,
+                    "target": item_id,
+                    "type": "contains"
+                })
         
         return {
             "status": "success",
             "document_id": document_id,
             "filename": doc.get('filename'),
             "entities": entities,
+            "entities_flat": entities_flat,
             "keywords": keywords_list,
             "topics": topics,
             "graph": {
                 "nodes": nodes,
-                "edges": edges
+                "edges": edges,
+                "hierarchical": True  # Flag for frontend
             }
         }
     except HTTPException:

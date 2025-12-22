@@ -77,6 +77,30 @@
     text-overflow: ellipsis;
 }
 
+.modal-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.modal-fullscreen {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #9ca3af;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.modal-fullscreen:hover {
+    color: #a78bfa;
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.3);
+    transform: scale(1.05);
+}
+
 .modal-close {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -95,10 +119,73 @@
     transform: scale(1.05);
 }
 
+/* Fullscreen mode */
+.entity-graph-modal.fullscreen {
+    width: 98vw;
+    max-width: 98vw;
+    height: 96vh;
+    max-height: 96vh;
+    border-radius: 12px;
+}
+
+.entity-graph-modal.fullscreen .modal-body {
+    max-height: calc(96vh - 80px);
+}
+
+.entity-graph-modal.fullscreen .graph-svg {
+    height: calc(96vh - 280px);
+    min-height: 500px;
+}
+
 .modal-body {
     padding: 20px;
     max-height: 72vh;
     overflow-y: auto;
+    position: relative;
+}
+
+/* Zoom Controls */
+.zoom-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(26, 26, 46, 0.9);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 8px;
+    padding: 4px 8px;
+    z-index: 10;
+}
+
+.zoom-controls button {
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    color: #a78bfa;
+    font-size: 16px;
+    font-weight: bold;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.zoom-controls button:hover {
+    background: rgba(139, 92, 246, 0.3);
+    color: #fff;
+    transform: scale(1.1);
+}
+
+.zoom-level {
+    color: #9ca3af;
+    font-size: 12px;
+    min-width: 45px;
+    text-align: center;
 }
 
 /* Loading & Error States */
@@ -131,7 +218,7 @@
 /* Interactive SVG Graph */
 .graph-svg {
     width: 100%;
-    height: 380px;
+    height: 550px;
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(15, 15, 25, 0.6));
     border-radius: 16px;
     margin-bottom: 16px;
@@ -398,4 +485,173 @@
 
 .modal-body::-webkit-scrollbar-thumb:hover {
     background: rgba(139, 92, 246, 0.5);
+}
+
+/* ========================================
+   FOCUS MODE STYLES
+   ======================================== */
+
+/* Focus Mode Container */
+.graph-svg.focus-mode {
+    cursor: crosshair;
+}
+
+/* Smooth transitions for focus mode */
+.graph-node,
+.edge line {
+    transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Focused node - prominent glow and full opacity */
+.graph-node.focused .node-circle {
+    filter: drop-shadow(0 0 12px currentColor) drop-shadow(0 0 24px currentColor);
+    stroke: #fff;
+    stroke-width: 3px;
+}
+
+.graph-node.focused .node-glow {
+    opacity: 0.6 !important;
+    animation: focus-pulse 2s ease-in-out infinite;
+}
+
+@keyframes focus-pulse {
+
+    0%,
+    100% {
+        opacity: 0.4;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.7;
+        transform: scale(1.15);
+    }
+}
+
+/* Neighbor nodes - slightly dimmed but visible */
+.graph-node.neighbor .node-circle {
+    filter: drop-shadow(0 0 6px currentColor);
+    stroke: rgba(255, 255, 255, 0.3);
+    stroke-width: 2px;
+}
+
+/* Dimmed nodes - very low opacity */
+.graph-node.dimmed {
+    opacity: 0.12;
+    pointer-events: none;
+}
+
+.graph-node.dimmed .node-circle {
+    filter: none;
+}
+
+/* Highlighted edges connecting focused/neighbor nodes */
+.edge.highlighted line {
+    stroke-width: 3px !important;
+    stroke-dasharray: 8 4;
+    animation: dash-flow 0.8s linear infinite;
+}
+
+/* Dimmed edges */
+.edge.dimmed line {
+    opacity: 0.08;
+}
+
+/* Focus Hint UI */
+.focus-hint {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(26, 26, 46, 0.95);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    border-radius: 20px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #9ca3af;
+    z-index: 20;
+    animation: hint-fade-in 0.5s ease-out;
+    backdrop-filter: blur(8px);
+}
+
+@keyframes hint-fade-in {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+.focus-hint .hint-icon {
+    font-size: 14px;
+}
+
+.focus-hint .hint-text {
+    color: #a78bfa;
+}
+
+.focus-hint .hint-key {
+    background: rgba(139, 92, 246, 0.2);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 10px;
+    color: #c4b5fd;
+}
+
+/* Focus Active State - hide hint when focused */
+.graph-svg.focus-active .focus-hint {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Sticky/Pinned node indicator */
+.graph-node.pinned .node-circle {
+    stroke-dasharray: 4 2;
+}
+
+.graph-node.pinned::after {
+    content: '📌';
+    position: absolute;
+    font-size: 10px;
+    top: -8px;
+    right: -8px;
+}
+
+/* Pan transition for cinematic movement */
+.graph-transform-group {
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.graph-transform-group.animating {
+    transition: none;
+}
+
+/* Enhanced tooltip in focus mode */
+.node-tooltip.focus-tooltip {
+    background: rgba(26, 26, 46, 0.98);
+    border-color: rgba(139, 92, 246, 0.6);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5),
+        0 0 20px rgba(139, 92, 246, 0.2);
+}
+
+.focus-tooltip .tooltip-connections {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.focus-tooltip .connection-count {
+    color: #a78bfa;
+    font-weight: 600;
 }

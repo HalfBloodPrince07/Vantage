@@ -103,6 +103,11 @@ async def call_ollama_with_retry(
                 result = response.json()
                 response_text = result.get('response', '').strip()
                 
+                # Extract thinking content if present (from Ollama's thinking mode)
+                thinking_content = result.get('thinking', '')
+                if thinking_content:
+                    logger.debug(f"🧠 LLM thinking captured ({len(thinking_content)} chars)")
+                
                 # Validate response is not empty
                 if not response_text:
                     logger.warning(f"Empty LLM response on attempt {attempt + 1}")
