@@ -128,7 +128,7 @@
 .example-queries strong {
     display: block;
     margin-bottom: 10px;
-    color: #667eea;
+    color: #00d4ff;
 }
 
 .example-queries ul {
@@ -145,7 +145,7 @@
 }
 
 .example-queries li:hover {
-    color: #667eea;
+    color: #00d4ff;
 }
 
 .message {
@@ -310,7 +310,7 @@
     margin: 0 0 12px 0;
     font-size: 14px;
     font-weight: 600;
-    color: #667eea;
+    color: #00d4ff;
 }
 
 /* Timeline-style step display */
@@ -364,7 +364,7 @@
 .step-agent {
     font-weight: 700;
     font-size: 13px;
-    color: #667eea;
+    color: #00d4ff;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
@@ -1012,10 +1012,10 @@
     gap: 6px;
     width: 100%;
     padding: 8px 12px;
-    background: rgba(102, 126, 234, 0.1);
-    border: 1px solid rgba(102, 126, 234, 0.2);
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid rgba(0, 212, 255, 0.2);
     border-radius: 6px;
-    color: #667eea;
+    color: #00d4ff;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -1023,13 +1023,13 @@
 }
 
 .summary-toggle:hover {
-    background: rgba(102, 126, 234, 0.2);
-    border-color: #667eea;
+    background: rgba(0, 212, 255, 0.2);
+    border-color: #00d4ff;
 }
 
 .result-card .summary-toggle {
-    color: #667eea;
-    background: rgba(102, 126, 234, 0.1);
+    color: #00d4ff;
+    background: rgba(0, 212, 255, 0.1);
 }
 
 .result-summary-content {

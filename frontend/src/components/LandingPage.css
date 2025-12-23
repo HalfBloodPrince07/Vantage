@@ -1,0 +1,225 @@
+/* LandingPage.css - Full-width landing page styles */
+
+/* ============================================
+   FULL-WIDTH LANDING PAGE
+   ============================================ */
+
+.landing-page {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, #0a0a0f 0%, #12121a 50%, #1a1a2e 100%);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* ============================================
+   HEADER WITH AUTH BUTTONS
+   ============================================ */
+
+.landing-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10, 10, 15, 0.8);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.landing-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-icon {
+    font-size: 32px;
+}
+
+.logo-text {
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #00d4ff, #8b5cf6, #ff00ff);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradient-shift 4s ease-in-out infinite;
+}
+
+@keyframes gradient-shift {
+
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+.header-auth-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.auth-btn {
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.signin-btn {
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.signin-btn:hover {
+    border-color: #00d4ff;
+    color: #00d4ff;
+    transform: translateY(-2px);
+}
+
+.signup-btn {
+    background: linear-gradient(135deg, #00d4ff, #8b5cf6);
+    border: none;
+    color: white;
+    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3);
+}
+
+.signup-btn:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 8px 30px rgba(0, 212, 255, 0.4);
+}
+
+/* ============================================
+   HERO SECTION
+   ============================================ */
+
+.landing-hero {
+    text-align: center;
+    padding: 60px 40px 40px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.hero-title {
+    font-size: 48px;
+    font-weight: 800;
+    color: white;
+    margin: 0 0 20px 0;
+    line-height: 1.2;
+}
+
+.hero-gradient {
+    background: linear-gradient(135deg, #00d4ff, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hero-subtitle {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.6;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+/* ============================================
+   FEATURES SECTION
+   ============================================ */
+
+.landing-features {
+    flex: 1;
+    padding: 20px 40px 40px;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+
+.landing-footer {
+    padding: 30px 40px;
+    text-align: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.landing-footer small {
+    font-size: 13px;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .landing-header {
+        padding: 15px 20px;
+    }
+
+    .logo-text {
+        font-size: 22px;
+    }
+
+    .auth-btn {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+
+    .landing-hero {
+        padding: 40px 20px 30px;
+    }
+
+    .hero-title {
+        font-size: 32px;
+    }
+
+    .hero-subtitle {
+        font-size: 16px;
+    }
+
+    .landing-features {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-auth-buttons {
+        gap: 8px;
+    }
+
+    .auth-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .signin-btn {
+        display: none;
+    }
+
+    .hero-title {
+        font-size: 26px;
+    }
+}

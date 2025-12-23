@@ -1,0 +1,28 @@
+
+================================================================================
+LOCALENS SESSION LOG
+================================================================================
+Session Type: INGESTION
+Session Name: 2512.05721v1.pdf
+Started At:   2025-12-24 02:36:14
+================================================================================
+
+
+[02:36:14] STEP 1: START
+────────────────────────────────────────────────────────────
+Status: started
+Details:
+  • file_path: C:\Users\worka\Desktop\Projects\Local\data\2512.05721v1.pdf
+  • file_size: 1274611
+  • doc_id: 2a5ec1fbc52aa5babf91d516286ee1dc
+
+
+[02:36:14] STEP 2: EXTRACT_CONTENT
+────────────────────────────────────────────────────────────
+Status: completed
+Duration: 395ms
+Details:
+  • content_type: text
+  • content_length: 27789
+  • page_count: 5
+

@@ -1,0 +1,648 @@
+/* FeaturesShowcase.css - Premium interactive features showcase */
+
+/* ============================================
+   CONTAINER & LAYOUT
+   ============================================ */
+
+.features-showcase {
+    width: 100%;
+    margin: 0;
+    perspective: 1200px;
+}
+
+.features-showcase-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    align-items: center;
+}
+
+/* ============================================
+   AGENT ORBIT SYSTEM
+   ============================================ */
+
+.agent-orbit-container {
+    position: relative;
+    width: 280px;
+    height: 280px;
+    margin: 0 auto;
+    perspective: 800px;
+}
+
+.orbit-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90px;
+    height: 90px;
+    background: linear-gradient(135deg, #00d4ff 0%, #8b5cf6 50%, #ff00ff 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    box-shadow:
+        0 0 50px rgba(0, 212, 255, 0.4),
+        0 0 100px rgba(139, 92, 246, 0.2),
+        inset 0 0 20px rgba(255, 255, 255, 0.2);
+    animation: center-pulse 3s ease-in-out infinite;
+    z-index: 10;
+}
+
+@keyframes center-pulse {
+
+    0%,
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        box-shadow:
+            0 0 50px rgba(0, 212, 255, 0.4),
+            0 0 100px rgba(139, 92, 246, 0.2);
+    }
+
+    50% {
+        transform: translate(-50%, -50%) scale(1.08);
+        box-shadow:
+            0 0 70px rgba(0, 212, 255, 0.5),
+            0 0 120px rgba(139, 92, 246, 0.3);
+    }
+}
+
+.orbit-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 1px dashed rgba(0, 212, 255, 0.3);
+    border-radius: 50%;
+    animation: orbit-rotate 20s linear infinite;
+}
+
+.orbit-ring.primary {
+    width: 220px;
+    height: 220px;
+    animation-duration: 25s;
+}
+
+.orbit-ring.secondary {
+    width: 275px;
+    height: 275px;
+    animation-direction: reverse;
+    animation-duration: 35s;
+    border-color: rgba(139, 92, 246, 0.25);
+}
+
+@keyframes orbit-rotate {
+    from {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+
+    to {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+/* Agent Icons on Orbit */
+.orbit-agent {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    background: rgba(18, 18, 26, 0.95);
+    border: 2px solid rgba(0, 212, 255, 0.5);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    animation: agent-float 3s ease-in-out infinite;
+}
+
+.orbit-agent:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.orbit-agent:nth-child(2) {
+    animation-delay: 0.5s;
+}
+
+.orbit-agent:nth-child(3) {
+    animation-delay: 1s;
+}
+
+.orbit-agent:nth-child(4) {
+    animation-delay: 1.5s;
+}
+
+.orbit-agent:nth-child(5) {
+    animation-delay: 2s;
+}
+
+.orbit-agent:nth-child(6) {
+    animation-delay: 2.5s;
+}
+
+@keyframes agent-float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-4px);
+    }
+}
+
+.orbit-agent:hover {
+    transform: scale(1.25) translateY(-4px);
+    border-color: #00d4ff;
+    box-shadow:
+        0 8px 25px rgba(0, 212, 255, 0.4),
+        0 0 30px rgba(0, 212, 255, 0.3);
+    z-index: 20;
+}
+
+.orbit-agent .agent-tooltip {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%) scale(0.8);
+    background: rgba(18, 18, 26, 0.98);
+    border: 1px solid rgba(0, 212, 255, 0.4);
+    border-radius: 8px;
+    padding: 8px 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    z-index: 100;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+}
+
+.orbit-agent .agent-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(0, 212, 255, 0.4);
+}
+
+.orbit-agent:hover .agent-tooltip {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+}
+
+.agent-tooltip .agent-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #00d4ff;
+    margin-bottom: 2px;
+}
+
+.agent-tooltip .agent-role {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Position agents around the orbit */
+.orbit-ring.primary .orbit-agent:nth-child(1) {
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.orbit-ring.primary .orbit-agent:nth-child(2) {
+    top: 50%;
+    right: -18px;
+    transform: translateY(-50%);
+}
+
+.orbit-ring.primary .orbit-agent:nth-child(3) {
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.orbit-ring.primary .orbit-agent:nth-child(4) {
+    top: 50%;
+    left: -18px;
+    transform: translateY(-50%);
+}
+
+.orbit-ring.secondary .orbit-agent:nth-child(1) {
+    top: 10%;
+    right: 5%;
+}
+
+.orbit-ring.secondary .orbit-agent:nth-child(2) {
+    bottom: 10%;
+    right: 5%;
+}
+
+.orbit-ring.secondary .orbit-agent:nth-child(3) {
+    bottom: 10%;
+    left: 5%;
+}
+
+.orbit-ring.secondary .orbit-agent:nth-child(4) {
+    top: 10%;
+    left: 5%;
+}
+
+/* ============================================
+   FEATURE CARDS CAROUSEL
+   ============================================ */
+
+.features-carousel {
+    position: relative;
+    overflow: hidden;
+}
+
+.features-carousel-track {
+    display: flex;
+    gap: 16px;
+    padding: 10px 5px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.features-carousel-track::-webkit-scrollbar {
+    display: none;
+}
+
+.feature-card {
+    flex: 0 0 auto;
+    width: 180px;
+    padding: 24px 20px;
+    background: rgba(18, 18, 26, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.feature-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(139, 92, 246, 0.1));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.feature-card::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg,
+            transparent 30%,
+            rgba(255, 255, 255, 0.03) 50%,
+            transparent 70%);
+    transform: rotate(45deg) translateX(-100%);
+    transition: transform 0.6s ease;
+}
+
+.feature-card:hover::before {
+    opacity: 1;
+}
+
+.feature-card:hover::after {
+    transform: rotate(45deg) translateX(100%);
+}
+
+.feature-card:hover {
+    transform: translateY(-8px) scale(1.03);
+    border-color: rgba(0, 212, 255, 0.5);
+    box-shadow:
+        0 15px 40px rgba(0, 0, 0, 0.4),
+        0 0 30px rgba(0, 212, 255, 0.15);
+}
+
+.feature-card.active {
+    border-color: rgba(0, 212, 255, 0.6);
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.4),
+        0 0 40px rgba(0, 212, 255, 0.2);
+}
+
+.feature-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+    display: block;
+    animation: icon-float 4s ease-in-out infinite;
+    position: relative;
+    z-index: 1;
+}
+
+.feature-card:nth-child(1) .feature-icon {
+    animation-delay: 0s;
+}
+
+.feature-card:nth-child(2) .feature-icon {
+    animation-delay: 0.3s;
+}
+
+.feature-card:nth-child(3) .feature-icon {
+    animation-delay: 0.6s;
+}
+
+.feature-card:nth-child(4) .feature-icon {
+    animation-delay: 0.9s;
+}
+
+.feature-card:nth-child(5) .feature-icon {
+    animation-delay: 1.2s;
+}
+
+.feature-card:nth-child(6) .feature-icon {
+    animation-delay: 1.5s;
+}
+
+@keyframes icon-float {
+
+    0%,
+    100% {
+        transform: translateY(0) rotate(0deg);
+    }
+
+    25% {
+        transform: translateY(-4px) rotate(3deg);
+    }
+
+    75% {
+        transform: translateY(2px) rotate(-3deg);
+    }
+}
+
+.feature-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 6px;
+    position: relative;
+    z-index: 1;
+}
+
+.feature-desc {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.4;
+    position: relative;
+    z-index: 1;
+}
+
+/* Carousel Navigation Dots */
+.carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.carousel-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+.carousel-dot:hover {
+    background: rgba(0, 212, 255, 0.5);
+}
+
+.carousel-dot.active {
+    background: #00d4ff;
+    width: 24px;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+/* ============================================
+   FEATURE DETAIL PANEL
+   ============================================ */
+
+.feature-detail {
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(139, 92, 246, 0.05));
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    border-radius: 12px;
+    text-align: center;
+    animation: detail-fade-in 0.4s ease-out;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes detail-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.feature-detail-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #00d4ff;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.feature-detail-desc {
+    font-size: 15px;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+    max-width: 600px;
+}
+
+/* ============================================
+   STATS BAR
+   ============================================ */
+
+.stats-bar {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 8px 16px;
+    background: rgba(0, 212, 255, 0.05);
+    border: 1px solid rgba(0, 212, 255, 0.15);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+    border-color: rgba(0, 212, 255, 0.4);
+    transform: translateY(-2px);
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #00d4ff, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-label {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ============================================
+   ENTRANCE ANIMATIONS
+   ============================================ */
+
+.features-showcase.animate-in .agent-orbit-container {
+    animation: orbit-entrance 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.features-showcase.animate-in .features-carousel {
+    animation: carousel-entrance 0.6s ease-out 0.3s forwards;
+    opacity: 0;
+}
+
+.features-showcase.animate-in .feature-detail {
+    animation: detail-entrance 0.5s ease-out 0.5s forwards;
+    opacity: 0;
+}
+
+.features-showcase.animate-in .stats-bar {
+    animation: stats-entrance 0.5s ease-out 0.6s forwards;
+    opacity: 0;
+}
+
+@keyframes orbit-entrance {
+    from {
+        opacity: 0;
+        transform: scale(0.5) rotateX(20deg);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) rotateX(0deg);
+    }
+}
+
+@keyframes carousel-entrance {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes detail-entrance {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes stats-entrance {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+
+@media (max-width: 480px) {
+    .agent-orbit-container {
+        width: 160px;
+        height: 160px;
+    }
+
+    .orbit-center {
+        width: 55px;
+        height: 55px;
+        font-size: 26px;
+    }
+
+    .orbit-ring.primary {
+        width: 130px;
+        height: 130px;
+    }
+
+    .orbit-ring.secondary {
+        width: 158px;
+        height: 158px;
+    }
+
+    .orbit-agent {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+    }
+
+    .feature-card {
+        width: 120px;
+        padding: 16px 12px;
+    }
+
+    .feature-icon {
+        font-size: 28px;
+    }
+
+    .feature-title {
+        font-size: 12px;
+    }
+
+    .stats-bar {
+        gap: 12px;
+    }
+
+    .stat-item {
+        padding: 6px 12px;
+    }
+}

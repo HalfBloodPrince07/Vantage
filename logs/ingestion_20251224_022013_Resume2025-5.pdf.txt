@@ -1,0 +1,134 @@
+
+================================================================================
+LOCALENS SESSION LOG
+================================================================================
+Session Type: INGESTION
+Session Name: Resume2025-5.pdf
+Started At:   2025-12-24 02:20:13
+================================================================================
+
+
+[02:20:13] STEP 1: START
+────────────────────────────────────────────────────────────
+Status: started
+Details:
+  • file_path: C:\Users\worka\Desktop\test2\Resume2025-5.pdf
+  • file_size: 91259
+  • doc_id: 97b9f9b73082065047d97aa143e253a3
+
+
+[02:20:13] STEP 2: EXTRACT_CONTENT
+────────────────────────────────────────────────────────────
+Status: completed
+Duration: 254ms
+Details:
+  • content_type: text
+  • content_length: 3756
+  • page_count: 2
+
+
+[02:20:49] STEP 3: LLM CALL - TEXT_SUMMARIZATION
+────────────────────────────────────────────────────────────
+Model: qwen3-vl:8b
+Duration: 35843ms
+
+🧠 MODEL THINKING:
+────────────────────────────────────────
+Okay, the user wants me to create a comprehensive summary of a professional resume document. They've provided very specific instructions about the format and content requirements. 
+
+First, I need to analyze this document carefully. It's a resume for Aditya Narayan Jha, a specialized AI engineer. The document has several sections: contact info, professional summary, technical skills, professional experience, education, and achievements. 
+
+I notice this is a highly technical resume focused on agentic AI systems. The candidate has worked at Capgemini and NEC Corporation, with current role as Data and AI Engineer. The technical skills section is extensive - they're working with frameworks like LangGraph, LangChain, and tools like AWS. 
+
+The professional experience section is particularly detailed. At Capgemini, they've built multi-agent frameworks for SDLC automation and healthcare diagnostics. They've also implemented AI governance frameworks with security features. The NEC role involved document generation systems and prompt engineering techniques. 
+
+I should structure my summary to cover all required sections: executive summary, key content, important information. The user wants 5-10 paragraphs, so I'll need to be thorough but concise. 
+
+For the keywords, I'll extract the most relevant terms from the document - things like "Agentic AI Orchestration", "LangGraph", "Vision-RAG" etc. The entities section needs careful parsing - I see names like Aditya Narayan Jha, companies like Capgemini, technologies like AWS Strands. 
+
+The relationships part is tricky since the resume doesn't explicitly state relationships, but I can infer connections like "Aditya Narayan Jha | works for | Capgemini". I'll need to be precise here. 
+
+I notice the user is very specific about the format - they want EXACT structure with SUMMARY, KEYWORDS, ENTITIES_STRUCTURED etc. I must follow this precisely. The resume has some technical depth, so I should maintain accuracy about the AI frameworks and methodologies mentioned. 
+
+The achievements section shows they've won a Gem Award and mentored interns, which I should highlight in the summary. The education details are straightforward - B.Tech from A.K.T.U. 
+
+I'll need to be careful with dates - May 2024 to Present for Capgemini, Jan 2023 to May 2024 for NEC. The technical terms like "Quantization" and "Differential Privacy" should be included where relevant. 
+
+For the summary, I'll start with the executive summary, then cover key content in detail, and highlight important information like the Gem Award and specific technologies. I'll aim for 7 paragraphs to stay within the 5-10 range. 
+
+The keywords should capture the essence - "Agentic AI", "LangGraph", "Vision-RAG", "LLM Optimization", "AWS Strands". For entities, I'll list all the people, skills, companies etc. as specified. 
+
+I think I've got the structure mapped out. Now I'll craft the summary to be comprehensive but not redundant, hitting all the user's requirements while maintaining professional tone. The technical details need to be accurate since this is for an expert document analyst.
+────────────────────────────────────────
+
+📝 PROMPT (first 500 chars):
+You are an expert document analyst. Create a COMPREHENSIVE summary of this document.
+
+Your summary should be detailed and thorough (5-10 paragraphs), covering:
+
+## Executive Summary
+What is this document? What is its main purpose?
+
+## Key Content
+Describe the main sections, topics, and content in detail.
+
+## Important Information
+- Key facts, figures, statistics, and data points
+- Important dates, deadlines, or timeframes
+- Specific amounts, quantities, or measurements
+
+---
+DOCUMENT CONTENT:
+---...
+
+📤 RESPONSE (first 1000 chars):
+SUMMARY:
+This document is a comprehensive professional resume for Aditya Narayan Jha, a specialized AI Engineer with deep expertise in Agentic AI Orchestration and autonomous system design. Its primary purpose is to showcase Jha's technical capabilities, professional experience, and achievements in building complex, stateful AI workflows for enterprise applications, particularly within Software Development Life Cycle (SDLC) automation and healthcare diagnostics. The resume strategically positions Jha as a solution architect for multi-agent systems, emphasizing his proficiency with cutting-edge frameworks like LangGraph, LangChain, and Microsoft Autogen, alongside robust governance practices.
+
+The key content is structured into distinct sections. The Professional Summary establishes Jha's niche as an Agentic AI Engineer, highlighting core competencies in building stateful workflows using specific frameworks (Autogen, Semantic Kernel, LangGraph) and his focus on LLM Optimization, Vision-...
+
+
+[02:20:49] STEP 4: GENERATE_SUMMARY
+────────────────────────────────────────────────────────────
+Status: completed
+Duration: 35846ms
+Details:
+  • summary_length: 4108
+  • keywords_count: 21
+  • entities_count: 56
+  • relationships_count: 9
+  • topics_count: 10
+
+
+[02:20:49] STEP 5: CLASSIFY_DOCUMENT
+────────────────────────────────────────────────────────────
+Status: completed
+Details:
+  • doc_type: resume
+  • is_image: False
+
+
+[02:20:49] STEP 6: GENERATE_EMBEDDING
+────────────────────────────────────────────────────────────
+Status: completed
+Duration: 97ms
+Details:
+  • embedding_dim: 768
+  • is_zero_vector: False
+
+
+================================================================================
+[02:20:49] SESSION COMPLETE
+================================================================================
+Total Steps: 6
+Total Time: 36.34 seconds
+Status: success
+
+Result Summary:
+  • doc_id: 97b9f9b73082065047d97aa143e253a3
+  • filename: Resume2025-5.pdf
+  • summary_length: 4108
+  • entities_count: 56
+  • elapsed_seconds: 36.33908
+
+================================================================================

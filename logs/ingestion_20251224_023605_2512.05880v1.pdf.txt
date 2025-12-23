@@ -1,0 +1,156 @@
+
+================================================================================
+LOCALENS SESSION LOG
+================================================================================
+Session Type: INGESTION
+Session Name: 2512.05880v1.pdf
+Started At:   2025-12-24 02:36:05
+================================================================================
+
+
+[02:36:05] STEP 1: START
+────────────────────────────────────────────────────────────
+Status: started
+Details:
+  • file_path: C:\Users\worka\Desktop\Projects\Local\data\2512.05880v1.pdf
+  • file_size: 2449414
+  • doc_id: c3bef45165cee2734d6a58921fdcbed4
+
+
+[02:36:07] STEP 2: EXTRACT_CONTENT
+────────────────────────────────────────────────────────────
+Status: completed
+Duration: 2221ms
+Details:
+  • content_type: text
+  • content_length: 134014
+  • page_count: 42
+
+
+[02:37:26] STEP 3: LLM CALL - TEXT_SUMMARIZATION
+────────────────────────────────────────────────────────────
+Model: qwen3-vl:8b
+Duration: 78543ms
+
+🧠 MODEL THINKING:
+────────────────────────────────────────
+Okay, the user wants me to create a comprehensive summary of a technical document about "Neural Coherence." They've provided very specific instructions: 5-10 detailed paragraphs covering executive summary, key content, and important information. Plus they want strict formatting for keywords, entities, relationships, and topics.
+
+Hmm, this is a research paper from arXiv about model selection for AI systems. The authors are from Mila - Quebec AI Institute and Polytechnique Montreal. The core concept is "Neural Coherence" - a novel method for selecting model checkpoints when target data is scarce or out-of-distribution. 
+
+Let me unpack the key elements first. The abstract says they solve the problem of choosing which model checkpoint to use for fine-tuning when target data is unlabeled and scarce. Their solution uses activation statistics across layers to measure "coherence" between source and target domains. They tested it on ImageNet pre-training with Food-101, PlantNet-300K, and iNaturalist datasets. 
+
+For the executive summary section, I should highlight: the problem (unreliable checkpoint selection for OOD tasks), the solution (Neural Coherence using activation statistics), and the novelty (works with few unlabeled samples). The paper's main purpose is to provide a data-efficient model selection method.
+
+Looking at key content... The introduction explains why checkpoint selection matters - because pre-training costs are high and downstream tasks often have scarce OOD data. Section 2 defines Neural Coherence as tracking activation trajectories. Section 4 implements it for checkpoint selection. Sections 5-6 show experiments across meta-learning, zero-shot learning, etc. 
+
+Important data points: they use 5 unlabeled samples for target tasks, test on ImageNet1K pre-training, evaluate on Food-101 (101 classes), PlantNet-300K (300K plant images), iNaturalist (1000+ species). The method outperforms baselines in generalization. 
+
+I notice the user wants strict formatting. For entities, I'll list authors (Simon Guiroy etc.), skills (model selection, activation statistics), companies (Mila), locations (Montreal), dates (2025 arXiv submission), technologies (meta-learning, few-shot learning). 
+
+Relationships should show author affiliations - like Simon Guiroy | works for | Mila. Topics include "out-of-distribution generalization" and "few-shot learning." 
+
+Better double-check the document details. The abstract mentions "5 unlabeled samples" as a key figure. The paper title is "Neural Coherence: Find higher performance to out-of-distribution tasks from few samples." 
+
+For the summary structure, I'll do: 
+1) Executive summary 
+2) Problem context 
+3) Neural Coherence principle 
+4) Experimental setup 
+5) Results across domains 
+6) Versatility in data selection 
+7) Methodological contributions 
+8) Implementation details 
+9) Broader implications 
+10) Conclusion 
+
+Must avoid markdown and keep it natural. The keywords should be the paper's terms: neural coherence, out-of-distribution generalization, etc. 
+
+Wait - the user specified "5-10 paragraphs" but the example response has 10. I'll aim for 8-9 to be safe. Need to include all required sections without being redundant. 
+
+For entities, I'll extract: 
+PERSON: Simon Guiroy, Mats Richter, Sarath Chandar, Christopher Pal 
+SKILLS: model selection, activation statistics, out-of-distribution generalization 
+COMPANIES: Mila - Quebec AI Institute 
+EDUCATION: University of Montreal (implied) 
+LOCATIONS: Montreal, Canada 
+DATES: 5 Dec 2025 (arXiv date) 
+PROJECTS: Neural Coherence framework 
+TECHNOLOGIES: meta-learning, few-shot learning 
+
+Relationships should be author-affiliation links. Topics must include all key concepts from the paper. 
+
+This seems straightforward but requires careful extraction. The user is clearly testing precision - they want every detail captured exactly as per instructions. Better triple-check the document content against the required sections.
+────────────────────────────────────────
+
+📝 PROMPT (first 500 chars):
+You are an expert document analyst. Create a COMPREHENSIVE summary of this document.
+
+Your summary should be detailed and thorough (5-10 paragraphs), covering:
+
+## Executive Summary
+What is this document? What is its main purpose?
+
+## Key Content
+Describe the main sections, topics, and content in detail.
+
+## Important Information
+- Key facts, figures, statistics, and data points
+- Important dates, deadlines, or timeframes
+- Specific amounts, quantities, or measurements
+
+---
+DOCUMENT CONTENT:
+---...
+
+📤 RESPONSE (first 1000 chars):
+SUMMARY:
+This document presents a novel research framework called "Neural Coherence" developed by researchers at Mila - Quebec AI Institute and Polytechnique Montreal. The primary purpose is to address the critical challenge of selecting optimal model checkpoints for fine-tuning when target tasks involve scarce, unlabeled, or out-of-distribution (OOD) data. Traditional methods relying on in-distribution validation data become unreliable in such scenarios, creating a significant gap in practical AI deployment. The core innovation lies in characterizing model activation statistics across layers to measure "coherence" between source (pre-training) and target domains, enabling data-efficient model selection with minimal target samples. The authors demonstrate that this approach can effectively identify high-performing checkpoints using as few as 5 unlabeled target examples, significantly outperforming established baselines across multiple domains.
+
+The document is structured around a five-...
+
+
+[02:37:26] STEP 4: GENERATE_SUMMARY
+────────────────────────────────────────────────────────────
+Status: completed
+Duration: 78544ms
+Details:
+  • summary_length: 4721
+  • keywords_count: 10
+  • entities_count: 0
+  • relationships_count: 8
+  • topics_count: 10
+
+
+[02:37:26] STEP 5: CLASSIFY_DOCUMENT
+────────────────────────────────────────────────────────────
+Status: completed
+Details:
+  • doc_type: pdf_document
+  • is_image: False
+
+
+[02:37:26] STEP 6: GENERATE_EMBEDDING
+────────────────────────────────────────────────────────────
+Status: completed
+Duration: 88ms
+Details:
+  • embedding_dim: 768
+  • is_zero_vector: False
+
+
+================================================================================
+[02:37:26] SESSION COMPLETE
+================================================================================
+Total Steps: 6
+Total Time: 80.92 seconds
+Status: success
+
+Result Summary:
+  • doc_id: c3bef45165cee2734d6a58921fdcbed4
+  • filename: 2512.05880v1.pdf
+  • summary_length: 4721
+  • entities_count: 0
+  • elapsed_seconds: 81.907332
+
+================================================================================

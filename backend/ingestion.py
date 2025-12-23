@@ -555,7 +555,7 @@ TOPICS: [topic1, topic2, topic3, ...]"""
                 "topics": []
             }
     
-    async def _process_spreadsheet_detailed(self, content: Dict, file_path: Path) -> Dict[str, Any]:
+    async def _process_spreadsheet_detailed(self, content: Dict, file_path: Path, session_log: Optional[SessionLogger] = None) -> Dict[str, Any]:
         """Process spreadsheet with detailed analysis"""
         text = content.get('content', '')
         df = content.get('dataframe')
@@ -620,7 +620,7 @@ TOPICS: [data themes and subject areas]"""
                 "topics": ["spreadsheet", "data"]
             }
     
-    async def _process_image_detailed(self, content: Dict, file_path: Path, max_retries: int = 3) -> Dict[str, Any]:
+    async def _process_image_detailed(self, content: Dict, file_path: Path, session_log: Optional[SessionLogger] = None, max_retries: int = 3) -> Dict[str, Any]:
         """Process image with comprehensive detailed description"""
         
         for attempt in range(max_retries):

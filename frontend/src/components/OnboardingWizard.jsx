@@ -1,11 +1,13 @@
 // Updated OnboardingWizard with Sign Up / Sign In first screen
-// Enhanced with rotating facts, AI mascot, and premium animations
+// Enhanced with interactive features showcase and premium animations
 import React, { useState, useRef, useEffect } from 'react';
 import './LoginSettings.css';
 import './OnboardingWizard.css';
 import './OnboardingWizard-premium.css';
+import './LandingPage.css';
 import AmbientParticles from './AmbientParticles';
 import CreatorBadge from './CreatorBadge';
+import FeaturesShowcase from './FeaturesShowcase';
 
 // Rotating facts for the login screen
 const RANDOM_FACTS = [
@@ -248,54 +250,59 @@ const OnboardingWizard = ({ onComplete }) => {
         onComplete(userId, taskId, watcherEnabled);
     };
 
-    // Step 0: Sign Up or Sign In Choice
+    // Step 0: Full-Width Landing Page
     if (step === 0) {
         return (
-            <div className="login-overlay premium-auth">
-                <AmbientParticles particleCount={25} />
-                <div className="login-container glass-card">
-                    <h1 className="gradient-title">🔍 LocalLens</h1>
-                    <p className="subtitle">AI-Powered Document Search</p>
+            <div className="landing-page">
+                <AmbientParticles particleCount={40} />
 
-                    {/* Rotating Facts */}
-                    <div className="rotating-facts" key={factIndex}>
-                        <span className="fact-icon">{currentFact.icon}</span>
-                        <span className="fact-text">{currentFact.text}</span>
+                {/* Header with Auth Buttons */}
+                <header className="landing-header">
+                    <div className="landing-logo">
+                        <span className="logo-icon">🔍</span>
+                        <span className="logo-text">Vantage</span>
                     </div>
-
-                    <div className="auth-choice">
-                        <h2>Welcome!</h2>
-                        <p className="choice-subtitle">Choose an option to get started</p>
-
-                        <div className="choice-buttons">
-                            <button
-                                className="choice-btn signup premium-btn"
-                                onClick={() => handleAuthModeSelect('signup')}
-                            >
-                                <div className="choice-icon">✨</div>
-                                <div className="choice-title">Sign Up</div>
-                                <div className="choice-desc">Create a new account</div>
-                            </button>
-
-                            <button
-                                className="choice-btn signin premium-btn"
-                                onClick={() => handleAuthModeSelect('signin')}
-                            >
-                                <div className="choice-icon">🔓</div>
-                                <div className="choice-title">Sign In</div>
-                                <div className="choice-desc">Access your account</div>
-                            </button>
-                        </div>
+                    <div className="header-auth-buttons">
+                        <button
+                            className="auth-btn signin-btn"
+                            onClick={() => handleAuthModeSelect('signin')}
+                        >
+                            Sign In
+                        </button>
+                        <button
+                            className="auth-btn signup-btn"
+                            onClick={() => handleAuthModeSelect('signup')}
+                        >
+                            Get Started ✨
+                        </button>
                     </div>
+                </header>
 
-                    <div className="login-footer">
-                        <small>LocalLens v2.0 - Secure Document Assistant</small>
-                    </div>
-                </div>
-                <CreatorBadge />
+                {/* Hero Section */}
+                <section className="landing-hero">
+                    <h1 className="hero-title">
+                        <span className="hero-gradient">AI-Powered</span> Document Intelligence
+                    </h1>
+                    <p className="hero-subtitle">
+                        Transform your local documents into an intelligent, searchable knowledge base
+                        with advanced AI agents, knowledge graphs, and personalized search.
+                    </p>
+                </section>
+
+                {/* Features Showcase */}
+                <section className="landing-features">
+                    <FeaturesShowcase />
+                </section>
+
+                {/* Footer */}
+                <footer className="landing-footer">
+                    <small>Vantage v2.0 • 100% Local • Your Data Never Leaves Your Machine</small>
+                    <CreatorBadge />
+                </footer>
             </div>
         );
     }
+
 
     // Step 1: Authentication (Sign Up or Sign In)
     if (step === 1) {

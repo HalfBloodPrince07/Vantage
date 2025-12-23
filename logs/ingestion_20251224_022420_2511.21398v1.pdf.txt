@@ -1,0 +1,73 @@
+
+================================================================================
+LOCALENS SESSION LOG
+================================================================================
+Session Type: INGESTION
+Session Name: 2511.21398v1.pdf
+Started At:   2025-12-24 02:24:20
+================================================================================
+
+
+[02:24:20] STEP 1: START
+────────────────────────────────────────────────────────────
+Status: started
+Details:
+  • file_path: C:\Users\worka\Desktop\Projects\Local\data\2511.21398v1.pdf
+  • file_size: 5519814
+  • doc_id: d65b30988cf136fe99fb3bd776147808
+
+
+[02:24:21] STEP 2: EXTRACT_CONTENT
+────────────────────────────────────────────────────────────
+Status: completed
+Duration: 1031ms
+Details:
+  • content_type: text
+  • content_length: 107619
+  • page_count: 25
+
+
+[02:27:23] STEP 3: GENERATE_SUMMARY
+────────────────────────────────────────────────────────────
+Status: completed
+Duration: 181419ms
+Details:
+  • summary_length: 2000
+  • keywords_count: 1
+  • entities_count: 0
+  • relationships_count: 0
+  • topics_count: 0
+
+
+[02:27:23] STEP 4: CLASSIFY_DOCUMENT
+────────────────────────────────────────────────────────────
+Status: completed
+Details:
+  • doc_type: pdf_document
+  • is_image: False
+
+
+[02:27:23] STEP 5: GENERATE_EMBEDDING
+────────────────────────────────────────────────────────────
+Status: completed
+Duration: 526ms
+Details:
+  • embedding_dim: 768
+  • is_zero_vector: False
+
+
+================================================================================
+[02:27:23] SESSION COMPLETE
+================================================================================
+Total Steps: 5
+Total Time: 183.01 seconds
+Status: success
+
+Result Summary:
+  • doc_id: d65b30988cf136fe99fb3bd776147808
+  • filename: 2511.21398v1.pdf
+  • summary_length: 2000
+  • entities_count: 0
+  • elapsed_seconds: 183.008275
+
+================================================================================
