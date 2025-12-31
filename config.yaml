@@ -4,13 +4,13 @@
 ollama:
   base_url: "http://localhost:11434"
   timeout: 500
-  
+
   # Unified Vision-Language Model (handles both text and images)
   unified_model:
     name: "qwen3-vl:8b"
     temperature: 0.3
-    max_tokens: 2048
-    
+    max_tokens: 15000
+
   # Dynamic loading settings (simplified for single model)
   model_management:
     auto_unload: false
@@ -49,19 +49,19 @@ search:
     enabled: true
     vector_weight: 0.7
     bm25_weight: 0.3
-  
+
   # Query expansion settings
   query_expansion:
     enabled: true
     max_expansions: 3
-    
+
   # Retrieval settings
-  recall_top_k: 50        # Increased for better recall
+  recall_top_k: 50 # Increased for better recall
   rerank_top_k: 5
-  min_score: 0.3          # Lowered for more results
-  
+  min_score: 0.3 # Lowered for more results
+
   # Clustering
-  cluster_count: 8
+  cluster_count: 10
 
 # Agent Configuration
 agent:
@@ -69,7 +69,7 @@ agent:
   personality: "helpful and informative"
 
   # UI Display Mode
-  ui_mode: "minimalist"  # Options: "minimalist" or "verbose"
+  ui_mode: "minimalist" # Options: "minimalist" or "verbose"
 
   # Status messages for user feedback
   status_messages:
@@ -78,7 +78,7 @@ agent:
     reranking: "⚡ Ranking results by relevance..."
     summarizing: "✨ Preparing your results..."
     no_results: "😕 I couldn't find any matching documents."
-    
+
   # Response templates
   templates:
     search_intro: "I found {count} relevant documents for your query about '{topic}':"
@@ -88,7 +88,7 @@ agent:
 # File Watcher Configuration
 watcher:
   debounce_seconds: 3
-  batch_size: 5
+  batch_size: 1
   supported_extensions:
     - ".pdf"
     - ".docx"
@@ -105,39 +105,39 @@ watcher:
 # Ingestion Pipeline Settings
 ingestion:
   max_workers: 3
-  
+
   # Summary-based retrieval (no chunking)
   summary:
-    max_length: 7000           # Max tokens for detailed summary
+    max_length: 10000 # Max tokens for detailed summary
     include_full_content: true # Store full document content for LLM context
-    max_content_length: 50000  # Max chars of full content to store
-  
+    max_content_length: 50000 # Max chars of full content to store
+
   # Enhanced prompts
   prompts:
     summarization: |
       You are a document analysis assistant. Create a concise, searchable summary of this document.
-      
+
       Focus on:
       - Key entities (names, organizations, dates, locations)
       - Main topics and themes
       - Important facts and figures
       - Document type and purpose
-      
+
       Document content:
       {content}
-      
+
       Provide a 2-3 sentence summary that captures the essence of this document:
-      
+
     image_caption: |
       Analyze this image thoroughly and provide a detailed description.
-      
+
       Include:
       - Main subjects and objects visible
       - Text or writing if present (transcribe it)
       - Colors, layout, and visual style
       - Context clues about what this image represents
       - Any logos, brands, or identifiable elements
-      
+
       Provide a comprehensive description that would help someone find this image through text search:
 
 # MCP Server Configuration
@@ -153,7 +153,7 @@ a2a:
     enabled: true
     max_retries: 4
     timeout: 60
-    
+
   agents:
     orchestrator:
       name: "OrchestratorAgent"
@@ -163,7 +163,7 @@ a2a:
         - "task_planning"
         - "agent_coordination"
         - "result_aggregation"
-        
+
     ingestion:
       name: "IngestionAgent"
       description: "Processes and indexes documents"
@@ -173,7 +173,7 @@ a2a:
         - "process_files"
         - "extract_content"
         - "generate_embeddings"
-        
+
     search:
       name: "SearchAgent"
       description: "Handles search queries and reranking"
@@ -183,7 +183,7 @@ a2a:
         - "hybrid_search"
         - "rerank_results"
         - "cluster_documents"
-        
+
     conversation:
       name: "ConversationAgent"
       description: "Manages user interactions and generates responses"
@@ -199,10 +199,10 @@ a2a:
 memory:
   # Short-term Memory (Session Context)
   session:
-    backend: "redis"  # Options: "redis" or "memory"
+    backend: "redis" # Options: "redis" or "memory"
     redis_url: "redis://localhost:6379"
-    window_size: 10  # Number of conversation turns to maintain
-    ttl_seconds: 3600  # 1 hour session timeout
+    window_size: 10 # Number of conversation turns to maintain
+    ttl_seconds: 3600 # 1 hour session timeout
 
   # Long-term Memory (User Profiles)
   user_profile:
@@ -219,8 +219,47 @@ memory:
   # Memory Consolidation
   consolidation:
     enabled: true
-    interval_seconds: 3600  # Run every hour
+    interval_seconds: 3600 # Run every hour
 
+  # Agentic Memory (A-mem) Configuration
+  agentic_memory:
+    enabled: true
+    index_name: "vantage_memories"
+
+    generation:
+      model: "qwen3-vl:8b"
+      max_keywords: 5
+      max_tags: 3
+
+    evolution:
+      similarity_threshold: 0.7
+      max_links_per_note: 10
+      enable_causal_chains: true
+      enable_contradictions: true
+
+    consolidation:
+      enabled: true
+      min_cluster_size: 3
+      interval_hours: 24
+
+    multimodal:
+      enabled: true
+
+    proactive:
+      enabled: true
+      suggestion_threshold: 0.6
+      max_suggestions: 5
+
+    pruning:
+      enabled: true
+      max_notes: 10000
+      decay_rate: 0.01
+      prune_after_days: 30
+
+    monitoring:
+      log_searches: true
+      track_link_quality: true
+      adaptive_tuning: true
 
 # Specialized Agents Configuration
 agents:
@@ -245,7 +284,7 @@ agents:
   # Summarization Agent
   summarization:
     enabled: true
-    default_type: "comprehensive"  # Options: comprehensive, brief, bullet_points
+    default_type: "comprehensive" # Options: comprehensive, brief, bullet_points
     max_documents: 10
     hierarchical_threshold: 5
 
@@ -261,15 +300,13 @@ agents:
     quality_threshold: 0.5
     enable_hallucination_detection: true
 
-
 # Orchestration Configuration
 orchestration:
-  use_langgraph: true  # Use LangGraph if available, else fallback
+  use_langgraph: true # Use LangGraph if available, else fallback
   enable_parallel_execution: true
   max_concurrent_agents: 3
   timeout_seconds: 60
   retry_attempts: 2
-
 
 # Dual-Mode Response System
 response_modes:
@@ -283,22 +320,21 @@ response_modes:
   # General Knowledge Mode
   general_mode:
     enabled: true
-    use_web_search: false  # DuckDuckGo fallback
+    use_web_search: false # DuckDuckGo fallback
     max_response_tokens: 2048
     temperature: 0.4
-
 
 # Observability & Monitoring
 observability:
   # OpenTelemetry Tracing
   tracing:
-    enabled: false  # Set to true when ready
+    enabled: false # Set to true when ready
     endpoint: "http://localhost:4318"
     service_name: "locallens"
 
   # Prometheus Metrics
   metrics:
-    enabled: false  # Set to true when ready
+    enabled: false # Set to true when ready
     port: 9090
     path: "/metrics"
 
@@ -319,5 +355,4 @@ performance:
   # Request queuing
   max_concurrent_requests: 10
   request_timeout: 120
-
 # uvicorn backend.api:app --host 0.0.0.0 --port 8000

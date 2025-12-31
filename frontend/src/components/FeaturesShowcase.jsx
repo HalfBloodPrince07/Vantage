@@ -40,10 +40,10 @@ const FEATURES = [
         fullDesc: 'Process any document type - PDFs, Word docs, spreadsheets, and even images. AI-powered summarization and entity extraction included.'
     },
     {
-        icon: '💾',
-        title: 'Memory',
-        shortDesc: 'Context-aware',
-        fullDesc: 'Remembers your conversation history and learns your preferences over time for increasingly personalized search results.'
+        icon: '🧬',
+        title: 'A-Mem',
+        shortDesc: 'Agentic Memory',
+        fullDesc: 'Self-evolving Agentic Memory (A-Mem) creates structured notes, evolves knowledge over time, and learns from every interaction for truly intelligent personalization.'
     },
     {
         icon: '⚡',
@@ -98,7 +98,7 @@ const FeaturesShowcase = () => {
                 {/* Agent Orbit */}
                 <div className="agent-orbit-container">
                     <div className="orbit-center">🔍</div>
-                    
+
                     {/* Primary orbit ring with agents */}
                     <div className="orbit-ring primary">
                         {primaryAgents.map((agent, idx) => (
@@ -111,7 +111,7 @@ const FeaturesShowcase = () => {
                             </div>
                         ))}
                     </div>
-                    
+
                     {/* Secondary orbit ring with agents */}
                     <div className="orbit-ring secondary">
                         {secondaryAgents.map((agent, idx) => (
@@ -141,7 +141,7 @@ const FeaturesShowcase = () => {
                             </div>
                         ))}
                     </div>
-                    
+
                     {/* Navigation dots */}
                     <div className="carousel-dots">
                         {FEATURES.map((_, idx) => (

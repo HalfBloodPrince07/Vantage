@@ -1,7 +1,7 @@
 # backend/utils/session_logger.py
 """
 Session-based logging utility for capturing ingestion and query processing steps.
-Creates a single consolidated log file per session with LLM thinking capture.
+Creates a single consolidated daily log file for all sessions.
 """
 
 import os
@@ -13,13 +13,13 @@ from loguru import logger
 
 class SessionLogger:
     """
-    Creates session-specific log files capturing:
+    Creates consolidated session log files capturing:
     - Step-by-step processing logs
     - LLM thinking/reasoning output
     - Timing information
     - Final results
     
-    All logs are written to a single TXT file for easy reading.
+    All logs are appended to a single daily TXT file for easy reading.
     """
     
     def __init__(self, session_type: str, session_name: str, base_dir: str = "logs"):
@@ -35,20 +35,19 @@ class SessionLogger:
         self.session_name = self._sanitize_name(session_name)
         self.base_dir = Path(base_dir)
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.date_str = datetime.now().strftime("%Y%m%d")
         
         # Create logs directory
         self.base_dir.mkdir(parents=True, exist_ok=True)
         
-        # Single log file path
-        self.log_file = self.base_dir / f"{session_type}_{self.timestamp}_{self.session_name}.txt"
+        # Single consolidated daily log file (appends all sessions)
+        self.log_file = self.base_dir / f"{session_type}_{self.date_str}.log"
         
         self.step_count = 0
         self.start_time = datetime.now()
         
-        # Write header
-        self._write_header()
-        
-        logger.info(f"📁 Session log: {self.log_file}")
+        # Write session header (appends to daily log)
+        self._write_session_header()
     
     def _sanitize_name(self, name: str) -> str:
         """Sanitize filename for use in file names"""
@@ -63,19 +62,17 @@ class SessionLogger:
         with open(self.log_file, 'a', encoding='utf-8') as f:
             f.write(text)
     
-    def _write_header(self):
-        """Write log file header"""
+    def _write_session_header(self):
+        """Write session header (appends to daily log)"""
         header = f"""
 {'='*80}
-LOCALENS SESSION LOG
+SESSION: {self.session_name}
 {'='*80}
-Session Type: {self.session_type.upper()}
-Session Name: {self.session_name}
-Started At:   {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}
-{'='*80}
-
+Type: {self.session_type.upper()} | Started: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}
+{'─'*80}
 """
-        with open(self.log_file, 'w', encoding='utf-8') as f:
+        # Append instead of overwrite
+        with open(self.log_file, 'a', encoding='utf-8') as f:
             f.write(header)
     
     def log_step(

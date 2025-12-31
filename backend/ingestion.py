@@ -78,6 +78,10 @@ class IngestionPipeline:
         self._embedding_lock = asyncio.Lock()  # Thread-safe lock for concurrent access
         logger.info(f"Local embedding model loaded on {device} (dim: {self.embedding_dimension})")
 
+        # Failed files tracker
+        self.failed_files_path = Path("logs/failed_ingestion.json")
+        self._failed_files_lock = asyncio.Lock()
+
         logger.info("Enhanced ingestion pipeline initialized")
 
     async def process_directory(self, directory: Path, task_id: str):
@@ -459,7 +463,7 @@ class IngestionPipeline:
             }
         
         # Use more content for better summarization (up to 8000 chars)
-        max_length = 8000
+        max_length = 10000
         truncated = text[:max_length] + ("..." if len(text) > max_length else "")
         
         prompt = f"""You are an expert document analyst. Create a COMPREHENSIVE summary of this document.
@@ -548,6 +552,8 @@ TOPICS: [topic1, topic2, topic3, ...]"""
             
         except Exception as e:
             logger.error(f"Text summarization failed: {e}")
+            # Track failed file
+            await self._track_failed_file(file_path.name, "text_summarization", str(e))
             return {
                 "summary": text[:2000],
                 "keywords": file_path.stem.replace('_', ' ').replace('-', ' '),
@@ -598,7 +604,7 @@ TOPICS: [data themes and subject areas]"""
                     "prompt": prompt,
                     "stream": False,
                     "think": True,  # Enable reasoning for spreadsheet analysis
-                    "options": {"temperature": 0.3, "num_predict": 1500}
+                    "options": {"temperature": 0.3, "num_predict": 2500}
                 },
                 timeout=120.0
             )
@@ -620,8 +626,8 @@ TOPICS: [data themes and subject areas]"""
                 "topics": ["spreadsheet", "data"]
             }
     
-    async def _process_image_detailed(self, content: Dict, file_path: Path, session_log: Optional[SessionLogger] = None, max_retries: int = 3) -> Dict[str, Any]:
-        """Process image with comprehensive detailed description"""
+    async def _process_image_detailed(self, content: Dict, file_path: Path, session_log: Optional[SessionLogger] = None, max_retries: int = 5) -> Dict[str, Any]:
+        """Process image with comprehensive detailed description - OPTIMIZED"""
         
         for attempt in range(max_retries):
             try:
@@ -630,6 +636,23 @@ TOPICS: [data themes and subject areas]"""
                 
                 if len(image_data) == 0:
                     break
+                
+                # Resize large images for faster processing
+                try:
+                    from PIL import Image
+                    import io
+                    img = Image.open(io.BytesIO(image_data))
+                    max_dim = 1024
+                    if max(img.size) > max_dim:
+                        ratio = max_dim / max(img.size)
+                        new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
+                        img = img.resize(new_size, Image.Resampling.LANCZOS)
+                        buffer = io.BytesIO()
+                        img.save(buffer, format='JPEG', quality=85)
+                        image_data = buffer.getvalue()
+                        logger.debug(f"Resized image to {new_size} for faster processing")
+                except Exception as resize_err:
+                    logger.warning(f"Image resize failed, using original: {resize_err}")
                 
                 image_base64 = base64.b64encode(image_data).decode('utf-8')
                 
@@ -661,10 +684,10 @@ TOPICS: [topic1, topic2, topic3, ...]"""
                         "prompt": prompt,
                         "images": [image_base64],
                         "stream": False,
-                        "think": True,  # Enable reasoning for detailed image description
+                        # NOTE: think=False for images - thinking mode adds latency without benefit for vision
                         "options": {"temperature": 0.3, "num_predict": 1500}
                     },
-                    timeout=180.0
+                    timeout=90.0  # Reduced from 180s
                 )
                 
                 response.raise_for_status()
@@ -705,7 +728,8 @@ TOPICS: [topic1, topic2, topic3, ...]"""
                     await asyncio.sleep(2 ** attempt)
                     continue
         
-        # Fallback
+        # Fallback - track as failed and return basic info
+        await self._track_failed_file(file_path.name, "image_processing", "All retries failed")
         return {
             "summary": f"Image file: {file_path.name}. Unable to generate detailed description.",
             "keywords": file_path.stem.replace('_', ' ').replace('-', ' '),
@@ -745,12 +769,22 @@ TOPICS: [topic1, topic2, topic3, ...]"""
         if entities_section:
             section_text = entities_section.group(1)
             for category in entity_categories:
-                cat_match = re.search(rf'{category}:\s*\[([^\]]*)\]', section_text, re.IGNORECASE)
-                if cat_match:
-                    items = [item.strip() for item in cat_match.group(1).split(',') if item.strip()]
-                    if items:
-                        entities_structured[category.lower()] = items[:15]  # Limit per category
-                        result['entities_flat'].extend(items[:15])
+                # Try multiple patterns: with brackets, without brackets, or with line breaks
+                patterns = [
+                    rf'{category}:\s*\[([^\]]*)\]',  # PERSON: [item1, item2]
+                    rf'{category}:\s*([^\n]+)',       # PERSON: item1, item2 (no brackets)
+                ]
+                for pattern in patterns:
+                    cat_match = re.search(pattern, section_text, re.IGNORECASE)
+                    if cat_match:
+                        items_text = cat_match.group(1).strip()
+                        # Remove any remaining brackets
+                        items_text = re.sub(r'[\[\]]', '', items_text)
+                        items = [item.strip().strip('"\'') for item in items_text.split(',') if item.strip() and item.strip() not in ['...', '..', 'etc']]
+                        if items:
+                            entities_structured[category.lower()] = items[:15]
+                            result['entities_flat'].extend(items[:15])
+                        break
         
         # Fallback: try old ENTITIES: format if structured not found
         if not entities_structured:
@@ -790,6 +824,40 @@ TOPICS: [topic1, topic2, topic3, ...]"""
             result['topics'] = topics[:10]
         
         return result
+    
+    async def _track_failed_file(self, filename: str, failure_type: str, error_message: str):
+        """Track failed ingestion files in a JSON file"""
+        try:
+            async with self._failed_files_lock:
+                # Load existing failures or create new
+                failures = []
+                if self.failed_files_path.exists():
+                    try:
+                        with open(self.failed_files_path, 'r') as f:
+                            failures = json.load(f)
+                    except (json.JSONDecodeError, IOError):
+                        failures = []
+                
+                # Add new failure
+                failure_entry = {
+                    "filename": filename,
+                    "type": failure_type,
+                    "error": error_message[:200] if error_message else "Unknown error",
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+                # Avoid duplicates (same filename and type)
+                failures = [f for f in failures if not (f.get("filename") == filename and f.get("type") == failure_type)]
+                failures.append(failure_entry)
+                
+                # Save to file
+                self.failed_files_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(self.failed_files_path, 'w') as f:
+                    json.dump(failures, f, indent=2)
+                
+                logger.warning(f"📋 Tracked failed file: {filename} ({failure_type})")
+        except Exception as e:
+            logger.error(f"Failed to track failed file: {e}")
     
     def _auto_categorize_entities(self, entities: List[str]) -> Dict[str, List[str]]:
         """Auto-categorize flat entity list using simple heuristics"""
@@ -865,7 +933,7 @@ Provide a comprehensive description (3-5 sentences) that would help someone find
                         "stream": False,
                         "options": {
                             "temperature": 0.3,
-                            "num_predict": 500
+                            "num_predict": 1500
                         }
                     },
                     timeout=120.0  # Longer timeout for vision models
@@ -942,12 +1010,12 @@ Provide a comprehensive description (3-5 sentences) that would help someone find
             }
         
         # Truncate for prompt
-        max_length = 3000
+        max_length = 7000
         truncated = text[:max_length] + ("..." if len(text) > max_length else "")
         
         prompt = f"""You are a document analysis assistant. Analyze this document and provide:
 
-1. **Summary**: A concise 2-3 sentence summary capturing the document's main purpose and key information.
+1. **Summary**: A concise 5-7 sentence summary capturing the document's main purpose and key information.
 
 2. **Keywords**: 5-10 important keywords or phrases that would help find this document in a search.
 
@@ -959,7 +1027,7 @@ DOCUMENT CONTENT:
 ---
 
 Respond in this exact format:
-SUMMARY: [Your 2-3 sentence summary]
+SUMMARY: [Your 5-7 sentence summary]
 KEYWORDS: [keyword1, keyword2, keyword3, ...]
 ENTITIES: [entity1, entity2, entity3, ...]"""
 
@@ -991,7 +1059,7 @@ ENTITIES: [entity1, entity2, entity3, ...]"""
         except Exception as e:
             logger.error(f"Text summarization failed: {e}")
             return {
-                "summary": text[:500],
+                "summary": text[:900],
                 "keywords": file_path.stem.replace('_', ' ').replace('-', ' '),
                 "entities": []
             }

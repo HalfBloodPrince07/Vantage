@@ -1343,8 +1343,8 @@ async def get_document_entities(document_id: str):
                 })
                 node_id += 1
         
-        # Add keywords as a separate category if no structured entities
-        if not entities and keywords_list:
+        # Add keywords as a separate category (always show if available)
+        if keywords_list:
             cat_id = "cat_keywords"
             nodes.append({
                 "id": cat_id,
@@ -1696,7 +1696,7 @@ async def startup_event():
     
     # Optional: Configure the level to show in logs
     logging.getLogger("uvicorn").setLevel(logging.INFO)
-    logging.getLogger("uvicorn.access").setLevel(logging.INFO)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)  # Suppress verbose HTTP request logs
     # --------------------------------------
 
     global opensearch_client, ingestion_pipeline, reranker
@@ -1804,6 +1804,21 @@ async def startup_event():
         except Exception as e:
             logger.warning(f"Orchestrator initialization failed: {e}")
             enhanced_orchestrator = None
+
+    # 5. Initialize Agentic Memory System (A-mem)
+    global agentic_memory_system
+    try:
+        from backend.memory.agentic_memory import AgenticMemorySystem
+        agentic_memory_system = AgenticMemorySystem(
+            opensearch_client=opensearch_client,
+            embedding_model=ingestion_pipeline.embedding_model,
+            config=config.get("memory", {})
+        )
+        await agentic_memory_system.initialize()
+        logger.info("✅ Agentic Memory System (A-mem) initialized")
+    except Exception as e:
+        logger.warning(f"Agentic Memory System initialization failed: {e}. Continuing without A-mem features.")
+        agentic_memory_system = None
 
     # Register MCP tools (existing)
     mcp_registry.register_tool("search_documents", search)
@@ -2314,3 +2329,179 @@ async def open_file(file_path: str):
     except Exception as e:
         logger.error(f"File open error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- AGENTIC MEMORY (A-MEM) ENDPOINTS ---
+
+# Global agentic memory system
+agentic_memory_system = None
+
+
+class MemoryAddRequest(BaseModel):
+    content: str
+    user_id: str
+    note_type: str = "insight"
+    session_id: Optional[str] = None
+
+
+class MemorySearchRequest(BaseModel):
+    query: str
+    user_id: str
+    k: int = 5
+    use_chain: bool = False
+
+
+class MemoryCommandRequest(BaseModel):
+    command: str
+    user_id: str
+
+
+@app.post("/api/memory/add")
+async def add_memory(request: MemoryAddRequest):
+    """Store a new agentic memory with auto-generated attributes"""
+    global agentic_memory_system
+    
+    if not agentic_memory_system:
+        raise HTTPException(status_code=503, detail="Agentic memory system not initialized")
+    
+    try:
+        note = await agentic_memory_system.add_note(
+            content=request.content,
+            user_id=request.user_id,
+            note_type=request.note_type,
+            session_id=request.session_id
+        )
+        return {
+            "status": "success",
+            "note_id": note.id,
+            "keywords": note.keywords,
+            "links": note.links
+        }
+    except Exception as e:
+        logger.error(f"Memory add error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/memory/search")
+async def search_memories(query: str, user_id: str, k: int = 5, use_chain: bool = False):
+    """Search memories by semantic similarity"""
+    global agentic_memory_system
+    
+    if not agentic_memory_system:
+        raise HTTPException(status_code=503, detail="Agentic memory system not initialized")
+    
+    try:
+        results = await agentic_memory_system.search(
+            query=query,
+            user_id=user_id,
+            k=k,
+            use_chain=use_chain
+        )
+        return {"status": "success", "memories": results, "count": len(results)}
+    except Exception as e:
+        logger.error(f"Memory search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/memory/graph/{user_id}")
+async def get_memory_graph(user_id: str):
+    """Get memory graph data for visualization"""
+    global agentic_memory_system
+    
+    if not agentic_memory_system:
+        raise HTTPException(status_code=503, detail="Agentic memory system not initialized")
+    
+    try:
+        graph = await agentic_memory_system.get_graph_data(user_id)
+        return graph
+    except Exception as e:
+        logger.error(f"Memory graph error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/memory/stats")
+async def get_memory_stats(user_id: Optional[str] = None):
+    """Get memory system statistics"""
+    global agentic_memory_system
+    
+    if not agentic_memory_system:
+        raise HTTPException(status_code=503, detail="Agentic memory system not initialized")
+    
+    try:
+        stats = await agentic_memory_system.get_stats(user_id)
+        return stats
+    except Exception as e:
+        logger.error(f"Memory stats error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/memory/insights")
+async def get_memory_insights(user_id: str):
+    """Get memory insights (gaps, hot topics, stale clusters)"""
+    global agentic_memory_system
+    
+    if not agentic_memory_system:
+        raise HTTPException(status_code=503, detail="Agentic memory system not initialized")
+    
+    try:
+        insights = await agentic_memory_system.get_insights(user_id)
+        return insights
+    except Exception as e:
+        logger.error(f"Memory insights error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/memory/command")
+async def process_memory_command(request: MemoryCommandRequest):
+    """Process a natural language memory command"""
+    global agentic_memory_system
+    
+    if not agentic_memory_system:
+        raise HTTPException(status_code=503, detail="Agentic memory system not initialized")
+    
+    try:
+        result = await agentic_memory_system.process_command(
+            command=request.command,
+            user_id=request.user_id
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Memory command error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/memory/prune")
+async def trigger_memory_pruning(user_id: str):
+    """Manually trigger memory pruning and maintenance"""
+    global agentic_memory_system
+    
+    if not agentic_memory_system:
+        raise HTTPException(status_code=503, detail="Agentic memory system not initialized")
+    
+    try:
+        result = await agentic_memory_system.run_maintenance(user_id)
+        return {"status": "success", **result}
+    except Exception as e:
+        logger.error(f"Memory prune error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/memory/list")
+async def list_memories(user_id: str, limit: int = 50, note_type: Optional[str] = None):
+    """List user memories with optional filtering"""
+    global agentic_memory_system
+    
+    if not agentic_memory_system:
+        raise HTTPException(status_code=503, detail="Agentic memory system not initialized")
+    
+    try:
+        notes = await agentic_memory_system.store.get_user_notes(
+            user_id=user_id,
+            limit=limit,
+            note_type=note_type
+        )
+        return {"status": "success", "memories": [n.to_dict() for n in notes], "count": len(notes)}
+    except Exception as e:
+        logger.error(f"Memory list error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+

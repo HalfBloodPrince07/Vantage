@@ -76,10 +76,11 @@ class QueryClassifier:
             "showing", "with", "of"
         ]
 
-        # General knowledge keywords
+        # General knowledge keywords - these trigger LLM responses, not doc search
         self.general_keywords = [
             "what is", "who is", "how to", "explain", "define", "tell me about",
-            "why does", "how does", "when did"
+            "why does", "how does", "when did", "tell me a", "joke", "story",
+            "can you", "write me", "create a", "generate"
         ]
 
         # Comparison keywords
@@ -264,7 +265,7 @@ class QueryClassifier:
                 )
             return ClassificationResult(
                 intent=QueryIntent.GENERAL_KNOWLEDGE,
-                confidence=0.75,
+                confidence=0.85,  # Increased to avoid slow LLM fallback
                 reasoning="General knowledge question pattern"
             )
 

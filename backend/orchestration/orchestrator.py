@@ -820,15 +820,34 @@ class EnhancedOrchestrator:
         return state
 
     async def _explain_node(self, state: WorkflowState) -> WorkflowState:
+        """
+        Generate relevance explanations for results.
+        OPTIMIZED: Uses score-based explanations instead of slow LLM calls.
+        """
         try:
-            self._add_step(state, "📨 Hermes (The Messenger)", "Explaining Results", "Generating relevance explanations")
             results = state.get("results", [])
             explanations = []
+            
             for i, doc in enumerate(results[:3], 1):
-                result = await self.explanation_agent.explain_ranking(query=state["query"], document=doc, rank=i)
-                explanations.append(result["explanation"])
+                score = doc.get('score', 0)
+                filename = doc.get('filename', 'Document')
+                
+                # Fast score-based explanation (no LLM call)
+                if score > 0.8:
+                    relevance = "highly relevant"
+                elif score > 0.6:
+                    relevance = "relevant"
+                elif score > 0.4:
+                    relevance = "moderately relevant"
+                else:
+                    relevance = "potentially relevant"
+                
+                explanation = f"#{i} {filename} is {relevance} to your query (score: {score:.2f})"
+                explanations.append(explanation)
+            
             state["explanations"] = explanations
-            self._add_step(state, "📨 Hermes (The Messenger)", "Explanations Ready", f"Explained top {len(explanations)} results")
+            self._add_step(state, "📨 Hermes (The Messenger)", "Explanations Ready", 
+                          f"Explained top {len(explanations)} results")
         except Exception as e:
             logger.error(f"Explanation failed: {e}")
         return state
